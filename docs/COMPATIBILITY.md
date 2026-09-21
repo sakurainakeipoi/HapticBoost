@@ -15,6 +15,74 @@
 - [realme GT5 Pro 官方产品页](https://www.realme.com/cn/realme-gt-5-pro)
 - [realme 安全页面中的机型代号](https://www.realme.com/security)
 
+## 理论兼容范围
+
+### 先说结论
+
+**PM8550B 是高概率候选条件，但不是充分条件。** 本模块的完整兼容条件是：
+
+```text
+高通 HV Haptics 硬件已启用
+  + 当前内核实际绑定 qcom-hv-haptics
+  + /sys/class/qcom-haptics/ 存在
+  + vmax、fifo_vmax、cl_vmax 三个节点均存在且可写
+  = 当前版本的核心功能可进入实测
+```
+
+高通公开的 PM8550B 设备树确实定义了 `qcom,hv-haptics` 硬件单元，但默认状态为
+`disabled`，需要手机厂商在具体设备树中启用。更重要的是，高通基线版
+`qcom-hv-haptics` 驱动公开的 class 属性中没有本项目依赖的三个电压节点；
+这些节点是部分 OEM 内核增加的扩展。因此不能把“PM8550B”“骁龙”或
+“X 轴线性马达”直接等同于“可用”。
+
+- [高通 PM8550B 设备树：HV Haptics 单元](https://android.googlesource.com/kernel/msm-extra/devicetree/+/refs/heads/android-msm-eos-5.15-tm-wear-kr3-pixel-watch/qcom/pm8550b.dtsi)
+- [高通基线驱动：支持的 compatible 与原始 class 属性](https://android.googlesource.com/kernel/msm.git/+/9671bc00773d7f73172f1cf38a7cd638091d0214/drivers/input/misc/qcom-hv-haptics.c)
+
+### 控制器 / PMIC 分级
+
+| 控制器或平台条件 | 理论判断 | 当前结论 |
+|---|---|---|
+| **PM8550B** + OEM 扩展版 `qcom-hv-haptics` + 三个可写节点 | 与实测机结构相同，优先测试 | 🟡 高概率候选；仅 RMX3888 已实测 |
+| **PM8350B** + OEM 扩展版驱动 + 三个可写节点 | 高通驱动有原生匹配项，部分 OPlus 内核也加入三节点 | 🟡 高概率候选，尚无本项目实机报告 |
+| **PM5100** + OEM 扩展版驱动 + 三个可写节点 | 高通驱动有原生匹配项，但具体手机启用情况未知 | 🟡 理论候选，必须实机核对 |
+| 任意高通 SoC，但使用外置 Awinic、Cirrus 等触觉芯片 | 驱动路径和控制接口不同 | 🔴 当前版本不支持，需要单独适配 |
+| 联发科、三星 Exynos、Google Tensor | 不使用本模块硬编码的高通驱动路径 | 🔴 当前版本不支持；并非马达硬件一定不能增强，而是需要另一套驱动适配 |
+
+> PMIC/控制器型号比 SoC 名称更有参考价值，但最终仍以手机上实际存在的节点为准。
+
+### 已发现三节点源码的高概率候选
+
+下表是**公开 OEM 内核源码证据**，不是零售机实测名单。源码中同时定义
+`vmax`、`fifo_vmax`、`cl_vmax`，说明该平台具备适配基础；这些属性位于
+OPlus 功能编译条件内，具体机型、地区版本和系统版本仍可能未启用。
+
+| OEM 公开内核分支 | 对应产品分支 | 源码结果 | 判定 |
+|---|---|---|---|
+| OnePlus SM8350 | OnePlus 9 系列分支 | 三节点均有定义 | 🟡 优先征集实测 |
+| OnePlus SM8450 | OnePlus 10 Pro 分支 | 三节点均有定义 | 🟡 优先征集实测 |
+| OnePlus SM8550 | OnePlus 11 分支 | 三节点均有定义 | 🟡 优先征集实测 |
+| OnePlus SM8650 | OnePlus 12 分支 | 三节点均有定义 | 🟡 优先征集实测 |
+| realme SM8650 / PM8550B | 真我 GT5 Pro（RMX3888） | 三节点实机存在并完成完整测试 | ✅ 已实测 |
+
+源码证据：
+
+- [OnePlus SM8350 `qcom-hv-haptics.c`](https://github.com/OnePlusOSS/android_kernel_oneplus_sm8350/blob/oneplus/sm8350_t_13.0.0_op9/drivers/input/misc/qcom-hv-haptics.c)
+- [OnePlus SM8450 `qcom-hv-haptics.c`](https://github.com/OnePlusOSS/android_kernel_oneplus_sm8450/blob/oneplus/sm8450_v_15.0.0_oneplus_10_pro/drivers/input/misc/qcom-hv-haptics.c)
+- [OnePlus SM8550 `qcom-hv-haptics.c`](https://github.com/OnePlusOSS/android_kernel_oneplus_sm8550/blob/oneplus/sm8550_v_15.0.0_oneplus11/drivers/input/misc/qcom-hv-haptics.c)
+- [OnePlus SM8650 `qcom-hv-haptics.c`](https://github.com/OnePlusOSS/android_kernel_oneplus_sm8650/blob/oneplus/sm8650_v_15.0.0_oneplus12/drivers/input/misc/qcom-hv-haptics.c)
+
+### 骁龙也不一定兼容：两个反例
+
+| 设备 / 平台源码 | 检查结果 | 当前判断 |
+|---|---|---|
+| Nothing Phone (1) / SM7325 | 公开驱动中可见 `fifo_vmax`，但没有当前版本要求的完整三节点 | 🟠 不能直接使用，需针对该驱动适配 |
+| Nothing Phone (2) / SM8475 | 所核对公开分支未定义本项目要求的三节点 | 🔴 当前版本不兼容 |
+
+- [Nothing Phone (1) SM7325 驱动源码](https://github.com/NothingOSS/android_kernel_msm-5.4_nothing_sm7325/blob/master/drivers/input/misc/qcom-hv-haptics.c)
+- [Nothing Phone (2) SM8475 驱动源码](https://github.com/NothingOSS/android_kernel_msm-5.10_nothing_sm8475/blob/master/drivers/input/misc/qcom-hv-haptics.c)
+
+这两个反例说明：**“高通系可能性较大”是筛选方向，不是兼容承诺。**
+
 ### RMX3888 硬件证据
 
 | 项目 | 实机读取结果 | 取证位置 |
@@ -57,7 +125,8 @@
 在 Root 终端中执行：
 
 ```sh
-su -c 'ls -l /sys/class/qcom-haptics/'
+su -c 'for n in vmax fifo_vmax cl_vmax; do p=/sys/class/qcom-haptics/$n; if [ -e "$p" ] && [ -w "$p" ]; then echo "$n: OK ($(cat "$p"))"; else echo "$n: MISSING_OR_READ_ONLY"; fi; done'
+su -c 'ls -l /sys/class/qcom-haptics/ 2>/dev/null'
 su -c 'cat /sys/class/qcom-haptics/lra_frequency_hz 2>/dev/null'
 su -c 'cat /sys/class/qcom-haptics/vibrator_type 2>/dev/null'
 su -c 'dmesg | grep -m 5 -i qcom-hv-haptics'
