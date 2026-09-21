@@ -82,16 +82,19 @@ adb push module/* /data/adb/modules/haptic_boost_qcom/
 adb shell su -c 'chmod 0755 /data/adb/modules/haptic_boost_qcom/*.sh'
 
 # 2) 装 App（必须先拷到 /data/local/tmp，system_server 读不了 /sdcard）
-adb push dist/HapticBoost-1.2-debug.apk /data/local/tmp/
-adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.2-debug.apk'
+adb push dist/HapticBoost-1.2.1-release.apk /data/local/tmp/
+adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.2.1-release.apk'
 ```
 
 ### 自己打包 zip
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.zip
+# → dist/haptic-boost-v1.2.1.zip
 ```
+
+发布包同时包含新式根目录模块结构与 `META-INF` 兼容入口，可由 KernelSU、
+新版 Magisk，以及仍使用 Magisk 27 安装流程的 Kitsune Manager 安装。
 
 ### 验证是否生效
 
@@ -161,8 +164,8 @@ HapticBoost/
 ├── tools/
 │   └── build-module-zip.sh # 一键打包模块 zip
 ├── dist/                   # 预编译产物（已被 .gitignore 忽略）
-│   ├── haptic-boost-v1.2.zip         # ← 可直接刷的模块包
-│   └── HapticBoost-1.2-debug.apk
+│   ├── haptic-boost-v1.2.1.zip       # ← 可直接刷的模块包
+│   └── HapticBoost-1.2.1-release.apk
 ├── HANDOFF.md              # ★ 交接文档（给协作者 / 其他 AI）
 ├── LICENSE                 # MIT
 └── README.md

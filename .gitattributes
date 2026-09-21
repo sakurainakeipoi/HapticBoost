@@ -1,0 +1,5 @@
+*.sh text eol=lf
+gradlew text eol=lf
+module.prop text eol=lf
+update-binary text eol=lf
+updater-script text eol=lf

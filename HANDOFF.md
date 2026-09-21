@@ -197,7 +197,7 @@ sh /data/adb/modules/haptic_boost_qcom/restore.sh
 - ✅ **模块 zip 已可一键产出**：
   ```bash
   bash tools/build-module-zip.sh
-  # → dist/haptic-boost-v1.2.zip（内嵌 Material 3 App）
+  # → dist/haptic-boost-v1.2.1.zip（内嵌 Material 3 App）
   #   内嵌 App + customize.sh（刷模块时自动 pm install 装 App）
   ```
   zip 内部结构已验证：`module.prop` 在根、`.sh` 为 0755、`module.prop` 为 0644。

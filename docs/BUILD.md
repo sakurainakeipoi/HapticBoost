@@ -48,7 +48,7 @@ app/build/outputs/apk/debug/app-debug.apk
 用于模块联调时，将它复制为：
 
 ```text
-dist/HapticBoost-1.2-debug.apk
+dist/HapticBoost-1.2.1-release.apk
 ```
 
 发布版签名见本文 §5；不要发布调试密钥签名的 APK。
@@ -139,19 +139,23 @@ KEY_PASSWORD
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.zip
+# → dist/haptic-boost-v1.2.1.zip
 ```
 
 结构要求：
 
 ```text
-haptic-boost-v1.2.zip
+haptic-boost-v1.2.1.zip
 ├── module.prop
 ├── HapticBoost.apk
 ├── service.sh
 ├── customize.sh
 └── 其他模块脚本
 ```
+
+打包脚本会加入 `META-INF/com/google/android/` 兼容入口。该入口用于仍沿用
+Magisk 27 安装流程的 Kitsune 等管理器；KernelSU 与新版 Magisk 会安全忽略
+或兼容处理它。不要从发布包中删除该目录。
 
 打包脚本通过 Python `zipfile` 明确写入权限位：所有 `.sh` 为 `0755`，其余文件为
 `0644`。不要换回普通 `zip` 命令，否则从手机存储转移源码时可能再次丢失执行位。

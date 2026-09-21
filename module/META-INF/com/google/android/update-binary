@@ -1,0 +1,26 @@
+#!/sbin/sh
+
+# Compatibility entry point for Magisk/Kitsune managers that still expect the
+# legacy META-INF installer layout. KernelSU and newer Magisk versions ignore
+# this directory and install the root-level module files normally.
+umask 022
+
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null
+
+if [ ! -f /data/adb/magisk/util_functions.sh ]; then
+  echo "! Magisk v20.4 or newer is required"
+  exit 1
+fi
+
+. /data/adb/magisk/util_functions.sh
+
+if [ "${MAGISK_VER_CODE:-0}" -lt 20400 ]; then
+  ui_print "! Magisk v20.4 or newer is required"
+  exit 1
+fi
+
+install_module
+exit 0

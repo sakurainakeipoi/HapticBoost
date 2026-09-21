@@ -23,7 +23,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-cp module/* "$TMP"/
+cp -a module/. "$TMP"/
 
 if [ -n "$APK" ]; then
   cp "$APK" "$TMP/HapticBoost.apk"
@@ -34,20 +34,31 @@ fi
 
 # 2) 用 python 打包（可精确控制可执行位；不依赖 zip 命令）
 python3 - "$TMP" "$OUT" <<'PY'
-import sys, os, zipfile
+import stat
+import sys
+import os
+import zipfile
 
 src, out = sys.argv[1], sys.argv[2]
 os.makedirs(os.path.dirname(out), exist_ok=True)
 
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
-    for name in sorted(os.listdir(src)):
-        path = os.path.join(src, name)
-        if not os.path.isfile(path):
-            continue
-        info = zipfile.ZipInfo(name)
+    files = []
+    for root, _, names in os.walk(src):
+        for name in names:
+            path = os.path.join(root, name)
+            archive_name = os.path.relpath(path, src).replace(os.sep, '/')
+            files.append((archive_name, path))
+
+    for archive_name, path in sorted(files):
+        info = zipfile.ZipInfo(archive_name)
+        # Emit a conventional Unix ZIP entry. Some older Magisk/Kitsune
+        # extractors reject Windows-origin entries carrying Unix mode bits.
+        info.create_system = 3
         info.compress_type = zipfile.ZIP_DEFLATED
         # 关键：.sh 记成 0755，其余 0644
-        info.external_attr = (0o755 if name.endswith('.sh') else 0o644) << 16
+        mode = 0o755 if archive_name.endswith('.sh') or archive_name.endswith('/update-binary') else 0o644
+        info.external_attr = (stat.S_IFREG | mode) << 16
         with open(path, 'rb') as f:
             z.writestr(info, f.read())
 
