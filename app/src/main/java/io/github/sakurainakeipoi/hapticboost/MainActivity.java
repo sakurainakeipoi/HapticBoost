@@ -48,18 +48,14 @@ public class MainActivity extends AppCompatActivity {
     private Slider normalFifoSlider;
     private Slider callVmaxSlider;
     private Slider callFifoSlider;
-    private Slider ringDurationSlider;
-    private Slider ringGapSlider;
 
     private TextView normalVmaxValue;
     private TextView normalFifoValue;
     private TextView callVmaxValue;
     private TextView callFifoValue;
-    private TextView ringDurationValue;
-    private TextView ringGapValue;
 
     private SwitchMaterial callBoostSwitch;
-    private SwitchMaterial ringPlaySwitch;
+    private View incomingControls;
     private MaterialButton refreshButton;
     private MaterialButton previewButton;
     private MaterialButton applyButton;
@@ -72,8 +68,8 @@ public class MainActivity extends AppCompatActivity {
     private int callFifoVmax = 9500;
     private int callClVmax = 9500;
     private int poll = 1;
-    private int hold = 3;
-    private int hintWindow = 90;
+    private int hold = 0;
+    private int hintWindow = 30;
     private int ringDuration = 1000;
     private int ringGap = 1000;
     private boolean callBoost = true;
@@ -116,18 +112,14 @@ public class MainActivity extends AppCompatActivity {
         normalFifoSlider = findViewById(R.id.normalFifoSlider);
         callVmaxSlider = findViewById(R.id.callVmaxSlider);
         callFifoSlider = findViewById(R.id.callFifoSlider);
-        ringDurationSlider = findViewById(R.id.ringDurationSlider);
-        ringGapSlider = findViewById(R.id.ringGapSlider);
 
         normalVmaxValue = findViewById(R.id.normalVmaxValue);
         normalFifoValue = findViewById(R.id.normalFifoValue);
         callVmaxValue = findViewById(R.id.callVmaxValue);
         callFifoValue = findViewById(R.id.callFifoValue);
-        ringDurationValue = findViewById(R.id.ringDurationValue);
-        ringGapValue = findViewById(R.id.ringGapValue);
 
         callBoostSwitch = findViewById(R.id.callBoostSwitch);
-        ringPlaySwitch = findViewById(R.id.ringPlaySwitch);
+        incomingControls = findViewById(R.id.incomingControls);
         refreshButton = findViewById(R.id.refreshButton);
         previewButton = findViewById(R.id.previewButton);
         applyButton = findViewById(R.id.applyButton);
@@ -136,9 +128,9 @@ public class MainActivity extends AppCompatActivity {
         int[] headingIds = {
                 R.id.appTitle,
                 R.id.statusMode,
+                R.id.settingsHeading,
                 R.id.dailyHeading,
-                R.id.callHeading,
-                R.id.ringHeading,
+                R.id.callBoostSwitch,
                 R.id.dangerHeading
         };
         for (int headingId : headingIds) {
@@ -156,33 +148,11 @@ public class MainActivity extends AppCompatActivity {
         bindVoltageSlider(callFifoSlider, callFifoValue, getString(R.string.call_fifo_label),
                 "fifo_vmax", true, value -> callFifoVmax = value);
 
-        ringDurationSlider.addOnChangeListener((slider, value, fromUser) -> {
-            if (fromUser) {
-                ringDuration = Math.max(100, Math.round(value));
-                renderRingValues();
-            }
+        callBoostSwitch.setOnCheckedChangeListener((button, checked) -> {
+            callBoost = checked;
+            ringPlay = checked;
+            updateIncomingControls(checked);
         });
-        ringGapSlider.addOnChangeListener((slider, value, fromUser) -> {
-            if (fromUser) {
-                ringGap = Math.max(0, Math.round(value));
-                renderRingValues();
-            }
-        });
-        Slider.OnSliderTouchListener ringTouchListener = new Slider.OnSliderTouchListener() {
-            @Override
-            public void onStartTrackingTouch(Slider slider) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(Slider slider) {
-                previewLightPulse();
-            }
-        };
-        ringDurationSlider.addOnSliderTouchListener(ringTouchListener);
-        ringGapSlider.addOnSliderTouchListener(ringTouchListener);
-
-        callBoostSwitch.setOnCheckedChangeListener((button, checked) -> callBoost = checked);
-        ringPlaySwitch.setOnCheckedChangeListener((button, checked) -> ringPlay = checked);
 
         refreshButton.setOnClickListener(view -> loadConfigurationAndStatus());
         previewButton.setOnClickListener(view -> previewRingPattern());
@@ -217,16 +187,16 @@ public class MainActivity extends AppCompatActivity {
         normalFifoSlider.setValue(clampVoltage(normalFifoVmax));
         callVmaxSlider.setValue(clampVoltage(callVmax));
         callFifoSlider.setValue(clampVoltage(callFifoVmax));
-        ringDurationSlider.setValue(clamp(ringDuration, 100, 3000));
-        ringGapSlider.setValue(clamp(ringGap, 0, 3000));
-        callBoostSwitch.setChecked(callBoost);
-        ringPlaySwitch.setChecked(ringPlay);
+        boolean incomingEnabled = callBoost || ringPlay;
+        callBoost = incomingEnabled;
+        ringPlay = incomingEnabled;
+        callBoostSwitch.setChecked(incomingEnabled);
+        updateIncomingControls(incomingEnabled);
 
         renderVoltageValue(normalVmaxValue, getString(R.string.normal_vmax_label), normalVmax);
         renderVoltageValue(normalFifoValue, getString(R.string.normal_fifo_label), normalFifoVmax);
         renderVoltageValue(callVmaxValue, getString(R.string.call_vmax_label), callVmax);
         renderVoltageValue(callFifoValue, getString(R.string.call_fifo_label), callFifoVmax);
-        renderRingValues();
     }
 
     private void renderVoltageValue(TextView view, String label, int value) {
@@ -235,13 +205,11 @@ public class MainActivity extends AppCompatActivity {
         view.setContentDescription(label + "，" + display);
     }
 
-    private void renderRingValues() {
-        String duration = getString(R.string.value_ms_format, ringDuration);
-        String gap = getString(R.string.value_ms_format, ringGap);
-        ringDurationValue.setText(duration);
-        ringDurationValue.setContentDescription(getString(R.string.ring_duration) + "，" + duration);
-        ringGapValue.setText(gap);
-        ringGapValue.setContentDescription(getString(R.string.ring_gap) + "，" + gap);
+    private void updateIncomingControls(boolean enabled) {
+        incomingControls.setAlpha(enabled ? 1f : 0.42f);
+        callVmaxSlider.setEnabled(enabled);
+        callFifoSlider.setEnabled(enabled);
+        previewButton.setEnabled(enabled);
     }
 
     private void loadConfigurationAndStatus() {
@@ -290,8 +258,8 @@ public class MainActivity extends AppCompatActivity {
                 case "CALL_CL_VMAX": callClVmax = clampVoltage(value); break;
                 case "CALL_BOOST": callBoost = value == 1; break;
                 case "POLL": poll = Math.max(1, value); break;
-                case "HOLD": hold = Math.max(0, value); break;
-                case "HINT_WINDOW": hintWindow = Math.max(0, value); break;
+                case "HOLD": hold = 0; break;
+                case "HINT_WINDOW": hintWindow = clamp(value, 0, 30); break;
                 case "RING_PLAY": ringPlay = value == 1; break;
                 case "RING_DUR": ringDuration = clamp(value, 100, 3000); break;
                 case "RING_GAP": ringGap = clamp(value, 0, 3000); break;
@@ -350,6 +318,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void saveConfiguration(boolean restoring) {
+        ringPlay = callBoost;
         StringBuilder config = new StringBuilder();
         config.append("# ============================================================\n");
         config.append("#  HapticBoost — App 写入配置\n");
@@ -397,31 +366,22 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void previewLightPulse() {
-        worker.execute(() -> sh("cmd vibrator_manager synced oneshot 45 72"));
-    }
-
     private void previewRingPattern() {
         int duration = ringDuration;
         int gap = ringGap;
-        boolean enabled = ringPlay;
         previewButton.setEnabled(false);
         Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
         worker.execute(() -> {
-            if (!enabled) {
-                sh("cmd vibrator_manager synced oneshot 300 255");
-            } else {
-                StringBuilder command = new StringBuilder();
-                command.append("echo 9500 > /sys/class/qcom-haptics/vmax;");
-                command.append("echo 9500 > /sys/class/qcom-haptics/fifo_vmax;");
-                command.append("echo 9500 > /sys/class/qcom-haptics/cl_vmax;");
-                for (int i = 0; i < 3; i++) {
-                    command.append("cmd vibrator_manager synced oneshot ").append(duration).append(" 255;");
-                    command.append("sleep ").append(seconds(gap)).append(";");
-                }
-                command.append("sh ").append(MOD).append("/apply.sh normal");
-                sh(command.toString());
+            StringBuilder command = new StringBuilder();
+            command.append("echo ").append(callVmax).append(" > /sys/class/qcom-haptics/vmax;");
+            command.append("echo ").append(callFifoVmax).append(" > /sys/class/qcom-haptics/fifo_vmax;");
+            command.append("echo ").append(callClVmax).append(" > /sys/class/qcom-haptics/cl_vmax;");
+            for (int i = 0; i < 3; i++) {
+                command.append("cmd vibrator_manager synced oneshot ").append(duration).append(" 255;");
+                command.append("sleep ").append(seconds(gap)).append(";");
             }
+            command.append("sh ").append(MOD).append("/apply.sh normal");
+            sh(command.toString());
             runOnUiThread(() -> {
                 previewButton.setEnabled(true);
                 Toast.makeText(this, R.string.preview_complete, Toast.LENGTH_SHORT).show();
@@ -458,6 +418,8 @@ public class MainActivity extends AppCompatActivity {
         applyButton.setEnabled(!busy);
         restoreButton.setEnabled(!busy);
         refreshButton.setEnabled(!busy);
+        callBoostSwitch.setEnabled(!busy);
+        previewButton.setEnabled(!busy && callBoost);
         applyButton.setText(busy ? R.string.saving_settings : R.string.apply_settings);
     }
 

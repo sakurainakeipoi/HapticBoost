@@ -8,7 +8,7 @@
 ## 0. 一句话说明
 
 一个 **Magisk 模块 + 安卓 App**，通过 sysfs 调节高通线性马达（`qcom-hv-haptics`）的驱动电压，
-实现「日常 / 来电分场景增强震动」+「来电循环强震铃音」。
+实现「日常触感」+ 响铃期间自动启用的「来电增强」；接听或挂断立即停止。
 
 - **作者**：法秋
 - **开发环境**：Android 手机上的 AI Agent（root + proot Ubuntu）
@@ -22,11 +22,11 @@
 
 | 功能 | 状态 | 验证方式 |
 |---|---|---|
-| 日常 / 来电 双档电压切换 | ✅ 工作 | `cat /data/local/tmp/vibrate_boost.log` |
+| 日常 / 响铃 双档电压切换 | ✅ 工作 | `cat /data/local/tmp/vibrate_boost.log` |
 | 来电检测（系统电话） | ✅ 工作 | `dumpsys telecom` |
 | 来电检测（微信/QQ VoIP） | ✅ 工作 | `logcat -b events` |
 | 来电循环强震铃音 | ✅ 工作 | `dmesg \| grep -i haptic` |
-| 挂断自动恢复 | ✅ 工作 | 日志 `STATE normal` |
+| 接听 / 挂断立即停止 | 🧪 v1.2.1 待手机复测 | 日志 `STATE normal` + `ring STOP` |
 | 看门狗（进程自愈） | ✅ 工作 | `keepalive.sh` |
 | 开机自启 | ✅ 工作 | `service.sh` |
 | 可视化调参 App | ✅ 已迁移 Gradle / Material 3 | `./gradlew :app:assembleDebug` |
@@ -101,7 +101,7 @@ module/
   start.sh           清理旧进程 + 拉起 run_watch / ring_listener / keepalive
   watch.sh           ★核心：轮询场景 → 写节点 → 拉起/停止 ring_play
   ring_listener.sh   监听 logcat events，写「来电提示文件」hint
-  ring_play.sh       ★来电循环强震（读 RING_DUR / RING_GAP）
+  ring_play.sh       ★仅在响铃期间循环强震（读 RING_DUR / RING_GAP）
   keepalive.sh       看门狗：发现进程不在就重启
   run_watch.sh       watch.sh 的 wrapper（把 stdout 重定向到日志）
   apply.sh           按 normal/call 写三个节点
@@ -134,7 +134,7 @@ docs/   TECH_NOTES.md / BUILD.md / ROADMAP.md
 ring_listener.sh  --(写 vib_call_hint)-->  watch.sh
 watch.sh          --(写 vib_ring_active, 每轮刷新)-->  ring_play.sh
 watch.sh          --(检查 vib_ring_play.pid 不存在才启动)-->  ring_play.sh
-ring_play.sh      --(令牌消失 或 超过 20s 未刷新 就退出)-->
+ring_play.sh      --(令牌消失 / watcher 终止并 cancel 就退出)-->
 keepalive.sh      --(每 20s 检查，掉了就拉起)-->  run_watch.sh / ring_listener.sh
 ```
 

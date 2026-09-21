@@ -1,7 +1,7 @@
 #!/system/bin/sh
-# HapticBoost events listener v4: incoming-call detect (incl. VoIP/WeChat)
-# START: call notification / voip service / voip activity
-# END: only when the voip call UI is destroyed (avoid mid-ring false end)
+# HapticBoost events listener v5: incoming-call fallback (incl. VoIP/WeChat)
+# Telecom state remains authoritative for ordinary calls. These events only
+# provide a short fallback hint for calls that bypass Android Telecom.
 HINT=/data/local/tmp/vib_call_hint
 PAT='category=call|VoipNewForegroundService|plugin.voip.ui.VideoActivity'
 START=$(date +%s)
@@ -13,7 +13,7 @@ while true; do
     case "$L" in
       *notification_enqueue*category=call*|*am_foreground_service_start*VoipNewForegroundService*|*wm_create_activity*plugin.voip.ui.VideoActivity*|*wm_on_resume_called*plugin.voip.ui.VideoActivity*)
         date +%s > $HINT ;;
-      *wm_destroy_activity*plugin.voip.ui.VideoActivity*)
+      *notification_cancel*category=call*|*am_foreground_service_stop*VoipNewForegroundService*|*wm_destroy_activity*plugin.voip.ui.VideoActivity*|*am_proc_died*VoipNewForegroundService*)
         rm -f $HINT ;;
     esac
   done

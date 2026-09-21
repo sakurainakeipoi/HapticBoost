@@ -103,8 +103,9 @@ new ProcessBuilder("su", "-c", cmd).start();
 // sh $MOD/apply.sh normal
 ```
 
-当前 App 会读取并原样保留未显示在 UI 中的 `NORMAL_CL_VMAX`、`CALL_CL_VMAX`、
-`POLL`、`HOLD`、`HINT_WINDOW`，避免保存时把高级配置意外冲掉。
+当前 App 会读取并保留未显示在 UI 中的闭环电压、轮询与铃声节奏字段。
+`CALL_BOOST` 与 `RING_PLAY` 在 UI 中合并为一个“来电增强”开关，保存时写入相同值；
+`HOLD` 固定为 0，`HINT_WINDOW` 最多 30 秒，保证接听或挂断后尽快停止。
 
 ---
 

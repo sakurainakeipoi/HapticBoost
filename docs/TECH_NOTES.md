@@ -71,7 +71,7 @@ cmd vibrator_manager feedback <constant_id>
 不经过 `vmax` 这个「上限」变量（或者说它自己设了上限）。
 
 **本项目的绕过方案**：
-`ring_play.sh` 在通话期间自己用 `cmd vibrator_manager synced oneshot` **循环播放满幅震动**，
+`ring_play.sh` 只在响铃期间用 `cmd vibrator_manager synced oneshot` **循环播放满幅震动**，
 用「节奏 + 满幅」来盖过系统铃声震动的存在感。
 
 ### ⭐ 真凶找到了：`VMAX_HDRM`
@@ -106,7 +106,7 @@ qcom-hv-haptics ...: FIFO programming is done
 
 | 优先级 | 来源 | 说明 |
 |---|---|---|
-| 1 | `dumpsys telecom` | 读 `CallAudioModeStateMachine` 的 `Mode MODE_*`<br>`RINGTONE` / `IN_CALL` / `IN_COMMUNICATION` → 判断来电/通话中 |
+| 1 | `dumpsys telecom` | `MODE_RINGTONE` 表示响铃；`MODE_IN_CALL` / `MODE_IN_COMMUNICATION` 表示已接听，必须立即停止补偿震动 |
 | 2 | `dumpsys telecom` → `Ringing calls:` 区块 | 统计正在响铃的通话条数 |
 | 3 | **推送式 hint 文件** | `ring_listener.sh` 监听 `logcat -b events` |
 
@@ -118,11 +118,12 @@ qcom-hv-haptics ...: FIFO programming is done
 匹配：category=call
       am_foreground_service_start VoipNewForegroundService
       wm_create_activity / wm_on_resume_called  plugin.voip.ui.VideoActivity
-结束：wm_destroy_activity plugin.voip.ui.VideoActivity
+结束：notification cancel / foreground service stop / activity destroy
 ```
 
 命中就把当前时间戳写进 `/data/local/tmp/vib_call_hint`，
-`watch.sh` 看到 hint 在 `HINT_WINDOW`（默认 90s）内就认为「来电了」。
+`watch.sh` 看到 hint 在 `HINT_WINDOW` 内就认为「来电了」，并把兜底窗口硬限制在 30 秒，
+避免结束事件缺失时持续震动。
 
 > ⚠️ 注意：VoIP 的结束判定**必须等 Activity destroy**，
 > 否则会在响铃中途误判结束（踩过这个坑）。
@@ -160,7 +161,7 @@ qcom-hv-haptics ...: FIFO programming is done
 
 | 文件 | 写入方 | 读取方 | 语义 |
 |---|---|---|---|
-| `vib_call_hint` | ring_listener | watch | 时间戳，90s 内有效 |
+| `vib_call_hint` | ring_listener | watch | 时间戳，最长 30s 有效；接听或显式响铃结束时会清除 |
 | `vib_ring_active` | watch（每轮） | ring_play | 令牌，>20s 未刷新则视为失效 |
 | `vib_ring_play.pid` | ring_play | watch | pid 锁，防重复启动 |
 
@@ -176,7 +177,7 @@ qcom-hv-haptics ...: FIFO programming is done
 | 来电 → 检测到 | ≤ `POLL`（默认 1s）+ dumpsys 耗时 |
 | 检测到 → 电压切换 | 立即 |
 | 检测到 → 首次强震 | ~0.2s |
-| 挂断 → 恢复日常 | ≤ `POLL` + `HOLD`（默认 3s） |
+| 接听 / 挂断 → 取消震动并恢复日常 | ≤ `POLL`（默认 1s） |
 
 内核实测（`dmesg`）：
 ```

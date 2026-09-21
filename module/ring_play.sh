@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# 来电强震铃音：循环播放满幅震动，直到通话结束
+# 来电强震铃音：仅在响铃期间循环；接听或挂断由 watcher 立即取消
 MODDIR=${0%/*}
 . $MODDIR/config.sh 2>/dev/null
 HB=/data/local/tmp/vibrate_boost_heartbeat
@@ -23,5 +23,6 @@ while [ $i -lt 900 ]; do
   sleep "$GS"
   i=$((i+1))
 done
+cmd vibrator_manager cancel >/dev/null 2>&1
 echo "$(date '+%m-%d %H:%M:%S') ring_play END loops=$i" >> $HB
 rm -f $PIDF
