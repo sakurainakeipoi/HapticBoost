@@ -135,6 +135,7 @@ docs/   TECH_NOTES.md / BUILD.md / ROADMAP.md
 ```
 ring_listener.sh  --(写 hint / VoIP 会话)-->  watch.sh
 watch.sh          --(接通后写 connected 锁)--> ring_listener.sh
+watch.sh          --(VoIP 会话中读取 dumpsys audio)--> 接听后立即停止
 watch.sh          --(写 vib_ring_active, 每轮刷新)-->  ring_play.sh
 watch.sh          --(检查 vib_ring_play.pid 不存在才启动)-->  ring_play.sh
 ring_play.sh      --(令牌消失 / watcher 终止并 cancel 就退出)-->

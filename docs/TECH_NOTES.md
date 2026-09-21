@@ -109,6 +109,7 @@ qcom-hv-haptics ...: FIFO programming is done
 | 1 | `dumpsys telecom` | `MODE_RINGTONE` 表示响铃；`MODE_IN_CALL` / `MODE_IN_COMMUNICATION` 表示已接听，必须立即停止补偿震动 |
 | 2 | `dumpsys telecom` → `Ringing calls:` 区块 | 统计正在响铃的通话条数 |
 | 3 | **推送式 hint 文件** | `ring_listener.sh` 监听 `logcat -b events` |
+| 4 | `dumpsys audio` → `Actual mode` | 微信会话期间出现 `MODE_IN_COMMUNICATION` 表示已经接听；该机型上微信不会进入 Telecom 状态机 |
 
 ### 为什么需要第 3 层？
 系统电话用前两层就够了，但**微信 / QQ 的 VoIP 通话不走 telecom**，
@@ -125,7 +126,8 @@ qcom-hv-haptics ...: FIFO programming is done
 `watch.sh` 看到 hint 在 `HINT_WINDOW` 内就认为「来电了」，并把兜底窗口硬限制在 30 秒，
 避免结束事件缺失时持续震动。
 
-微信接通时系统会短暂进入 `MODE_IN_CALL` / `MODE_IN_COMMUNICATION`。watcher 在这一刻写入
+微信接通时系统音频服务会进入 `MODE_IN_COMMUNICATION`，即使 Telecom 仍保持普通状态。
+watcher 仅在 VoIP 会话标记存在时读取该音频状态，并在接通的一刻写入
 `vib_voip_connected` 会话锁；同一通话后续的 Activity resume 或前台服务事件不再触发 hint。
 只有 `VoipNewForegroundService` 真正停止时才解除会话锁，避免接通后再次震动。
 

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# HapticBoost scene watcher v8
+# HapticBoost scene watcher v9
 # Only boost while the phone is ringing. Answering, rejecting, or hanging up
 # returns to the normal profile and actively stops the synthetic ring pulse.
 MODDIR=${0%/*}
@@ -16,8 +16,13 @@ ok() { case "$1" in ''|*[!0-9]*) return 1;; esac; [ "$1" -ge 0 ] && [ "$1" -le 9
 
 DT="dumpsys telecom"
 if command -v timeout >/dev/null 2>&1; then DT="timeout 5 dumpsys telecom"; fi
+DA="dumpsys audio"
+if command -v timeout >/dev/null 2>&1; then DA="timeout 5 dumpsys audio"; fi
 read_mode() {
   echo "$1" | sed -n '/CallAudioModeStateMachine/,/Pending Msg/p' | grep -oE 'Mode MODE_[A-Z_]+' | tail -n 1 | sed 's/.*Mode //'
+}
+read_audio_mode() {
+  $DA 2>/dev/null | sed -n 's/^ *- Actual mode = //p' | head -n 1
 }
 ring_count() {
   echo "$1" | awk '/^ Ringing calls:/{f=1;next} /^ Holding calls:/{f=0} f&&/[^ \t]/{c++} END{print c+0}'
@@ -60,6 +65,19 @@ while true; do
       MODE_RINGTONE) EXPLICIT_RING=1; SRC="mode:$MODE" ;;
       MODE_IN_CALL|MODE_IN_COMMUNICATION) ACTIVE_CALL=1; SRC="mode:$MODE" ;;
     esac
+
+    # Third-party VoIP apps such as WeChat do not appear in dumpsys telecom on
+    # this device. Once their foreground-service session exists, Android's
+    # audio service is authoritative: recording/communication mode starts at
+    # answer time, not while the incoming call is merely ringing.
+    if [ "$ACTIVE_CALL" = "0" ] && { [ -f "$VOIPF" ] || [ -f "$HINTF" ]; }; then
+      AUDIO_MODE=$(read_audio_mode)
+      case "$AUDIO_MODE" in
+        MODE_IN_CALL|MODE_IN_COMMUNICATION)
+          ACTIVE_CALL=1; SRC="audio:$AUDIO_MODE" ;;
+      esac
+    fi
+
     RC=$(ring_count "$TD")
     if [ "$RC" -gt 0 ] && [ "$ACTIVE_CALL" = "0" ]; then
       EXPLICIT_RING=1; SRC="ringList:$RC"
