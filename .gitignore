@@ -1,0 +1,25 @@
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+
+# Local toolchains used for reproducible verification
+.tools/
+.android-sdk/
+
+# Signing material and local secrets
+*.jks
+*.keystore
+keystore.properties
+local.properties
+
+# Generated release artifacts
+dist/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+

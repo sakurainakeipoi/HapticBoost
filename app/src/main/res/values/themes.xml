@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HapticBoost" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/haptic_primary</item>
+        <item name="colorOnPrimary">@color/haptic_on_primary</item>
+        <item name="colorPrimaryContainer">@color/haptic_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/haptic_on_primary_container</item>
+        <item name="colorSecondary">@color/haptic_secondary</item>
+        <item name="colorError">@color/haptic_error</item>
+        <item name="android:colorBackground">@color/haptic_background</item>
+        <item name="colorSurface">@color/haptic_surface</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:navigationBarColor">@color/haptic_surface</item>
+        <item name="android:statusBarColor">@color/haptic_surface</item>
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.HapticBoost.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.HapticBoost.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.HapticBoost.Large</item>
+    </style>
+
+    <style name="ShapeAppearance.HapticBoost.Small" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ShapeAppearance.HapticBoost.Medium" parent="ShapeAppearance.Material3.Corner.Large">
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="ShapeAppearance.HapticBoost.Large" parent="ShapeAppearance.Material3.Corner.ExtraLarge">
+        <item name="cornerSize">28dp</item>
+    </style>
+</resources>
+

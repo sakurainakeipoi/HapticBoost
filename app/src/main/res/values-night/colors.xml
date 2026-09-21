@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="haptic_primary">#CFBCFF</color>
+    <color name="haptic_on_primary">#362161</color>
+    <color name="haptic_primary_container">#4D3778</color>
+    <color name="haptic_on_primary_container">#E9DDFF</color>
+    <color name="haptic_secondary">#CBC2DB</color>
+    <color name="haptic_background">#141218</color>
+    <color name="haptic_surface">#141218</color>
+    <color name="haptic_error">#FFB4AB</color>
+    <color name="icon_background">#3B275F</color>
+</resources>
+
