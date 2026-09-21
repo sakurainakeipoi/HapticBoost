@@ -1,0 +1,61 @@
+name: 设备兼容性报告
+description: 提交一台手机对 HapticBoost 的实测结果
+title: "[设备兼容] 品牌 / 机型"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢参与兼容性测试。请删除日志中的 IMEI、序列号、电话号码和账号信息。
+
+  - type: input
+    id: device
+    attributes:
+      label: 品牌、机型与设备代号
+      placeholder: 例如：真我 GT5 Pro / RMX3888
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: SoC、Android 与内核版本
+      placeholder: 例如：SM8650 / Android 16 / Linux 6.1.141
+    validations:
+      required: true
+
+  - type: input
+    id: root
+    attributes:
+      label: Root 方案与版本
+      placeholder: 例如：Kitsune Magisk 27001
+    validations:
+      required: true
+
+  - type: textarea
+    id: nodes
+    attributes:
+      label: qcom-haptics 节点
+      description: 请粘贴 `su -c 'ls -l /sys/class/qcom-haptics/'` 的输出。
+      render: shell
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: results
+    attributes:
+      label: 已完成的测试
+      options:
+        - label: 模块 ZIP 安装成功
+        - label: App 可以获得 Root 并保存设置
+        - label: 日常普通震动可以调节
+        - label: 日常触感反馈可以调节
+        - label: 系统来电响铃、接听与挂断正常
+        - label: 第三方通话响铃、接听与挂断正常
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 测试结果与复现步骤
+      description: 请说明测试过的通话 App；若失败，请提供最短复现步骤和脱敏日志。
+    validations:
+      required: true

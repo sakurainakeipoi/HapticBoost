@@ -25,12 +25,22 @@
 
 ## 📱 兼容性
 
-> **一句话**：本模块绑定的是**驱动**，不是**机型**。
-> 只要你的设备用**高通 `qcom-hv-haptics` 驱动**，它就能用。
+> **一句话**：本模块绑定的是**驱动与 sysfs 节点**，不是只看品牌或处理器。
+> 出现 `qcom-hv-haptics` 只能说明“可能兼容”；必须同时核对节点并实际测试。
+
+### 已实测机型
+
+| 状态 | 手机 | 处理器 / 触觉控制器 | 马达信息 | 系统 / Root | 已验证范围 |
+|---|---|---|---|---|---|
+| ✅ 实机通过 | **真我 GT5 Pro（RMX3888）** | Snapdragon 8 Gen 3（SM8650） / **PM8550B** / `qcom-hv-haptics` | 官方标注 X 轴线性马达；驱动报告 **LRA 174 Hz、标称 9 Ω**；供应商与具体料号未公开 | Android 16、realme UI V16.1、Kitsune Magisk 27001 | 三路电压、日常触感、系统电话、微信来电与接听停止、App 调参 |
+
+> 上表中的机型名称和 X 轴线性马达来自 [realme 官方产品页](https://www.realme.com/cn/realme-gt-5-pro)，
+> 驱动、频率、阻抗和 PMIC 信息来自该测试机的 sysfs、设备树与内核日志。
+> 更完整的硬件证据、测试项目和机型反馈格式见 **[兼容性清单](docs/COMPATIBILITY.md)**。
 
 | 层级 | 判定依据 | 覆盖范围 | 状态 |
 |---|---|---|---|
-| 🟢 **核心功能**<br>（电压调节 / 场景切换） | `/sys/class/qcom-haptics/vmax` 存在 | 所有用 **`qcom-hv-haptics`** 驱动的机型<br>≈ 骁龙平台 + **PM8550 / PM8550B** 系列触觉 PMIC | ✅ 已在 realme RMX3888（SM8650）实测 |
+| 🟢 **核心功能**<br>（电压调节 / 场景切换） | `/sys/class/qcom-haptics/` 下同时存在 `vmax`、`fifo_vmax`、`cl_vmax` | 使用 **`qcom-hv-haptics`** 且节点语义一致的设备 | ✅ 仅 RMX3888 / PM8550B 已实测；其他机型属于待验证 |
 | 🟡 **来电强震铃音**<br>（`ring_play` 绕过方案） | AAC RichTap HAL 存在 | 目前确认 **OPPO / realme** 需要它<br>其他品牌铃声震动可能本来就受 `vmax` 控制，**不需要**这个补偿 | ⚠️ 仅 OPPO/realme 验证 |
 | 🔴 **不支持** | 驱动不同 | 联发科 / 三星 / Google Tensor<br>（`aw8697` / `cs40l25` / `haptic` 等） | ❌ 无效 |
 
@@ -42,7 +52,7 @@ su -c 'ls /sys/class/qcom-haptics/'
 
 | 结果 | 含义 |
 |---|---|
-| 看到 `vmax` / `fifo_vmax` / `cl_vmax` | 🟢 **完美支持** |
+| 看到 `vmax` / `fifo_vmax` / `cl_vmax` | 🟡 **满足核心条件，仍需从低电压开始实测** |
 | 只有 `vmax`（没有 `fifo_vmax`） | 🟡 **部分支持**（老版驱动，只能调普通震动） |
 | 目录不存在 | 🔴 **不支持** |
 
@@ -55,7 +65,7 @@ su -c 'ls /sys/class/qcom-haptics/'
 | Root | ✅ 必需（Magisk / KernelSU / APatch 均可） |
 | 系统 | Android 11+（`cmd vibrator_manager` 要求）<br>已在 **Android 16** 验证 |
 | 驱动 | **Qualcomm `qcom-hv-haptics`** |
-| 已验证机型 | realme RMX3888 · SM8650 · Android 16 · 内核 6.1 · PM8550B |
+| 已验证机型 | 真我 GT5 Pro（RMX3888）· SM8650 · PM8550B · X 轴 LRA 174 Hz · Android 16 · 内核 6.1 |
 
 > ⚠️ **节点名可能随驱动版本变化**：本项目使用的是
 > `vmax` / `fifo_vmax` / `cl_vmax` 三个节点。
@@ -158,6 +168,7 @@ HapticBoost/
 ├── docs/
 │   ├── TECH_NOTES.md       # ★ 技术原理与关键发现
 │   ├── BUILD.md            # 构建说明（含迁移 Gradle 的建议）
+│   ├── COMPATIBILITY.md    # 已实测机型、硬件证据与反馈格式
 │   ├── ROADMAP.md          # 未攻克项与攻坚路线
 │   └── screenshot.png
 ├── tools/
