@@ -117,7 +117,7 @@ qcom-hv-haptics ...: FIFO programming is done
 ```
 匹配：category=call
       am_foreground_service_start VoipNewForegroundService
-      wm_create_activity / wm_on_resume_called  plugin.voip.ui.VideoActivity
+      wm_create_activity  plugin.voip.ui.VideoActivity
 结束：notification cancel / foreground service stop / activity destroy
 ```
 
@@ -125,8 +125,9 @@ qcom-hv-haptics ...: FIFO programming is done
 `watch.sh` 看到 hint 在 `HINT_WINDOW` 内就认为「来电了」，并把兜底窗口硬限制在 30 秒，
 避免结束事件缺失时持续震动。
 
-> ⚠️ 注意：VoIP 的结束判定**必须等 Activity destroy**，
-> 否则会在响铃中途误判结束（踩过这个坑）。
+微信接通时系统会短暂进入 `MODE_IN_CALL` / `MODE_IN_COMMUNICATION`。watcher 在这一刻写入
+`vib_voip_connected` 会话锁；同一通话后续的 Activity resume 或前台服务事件不再触发 hint。
+只有 `VoipNewForegroundService` 真正停止时才解除会话锁，避免接通后再次震动。
 
 ---
 
@@ -144,7 +145,7 @@ qcom-hv-haptics ...: FIFO programming is done
      ▼           │            │
   watch.sh ──────┘◄───────────┘
      │  ▲
-     │  └── 读 vib_call_hint
+     │  └── 读 vib_call_hint / vib_voip_session / vib_voip_connected
      │
      ├── 写 vmax / fifo_vmax / cl_vmax
      ├── 写 vib_ring_active（每轮刷新）
@@ -162,6 +163,8 @@ qcom-hv-haptics ...: FIFO programming is done
 | 文件 | 写入方 | 读取方 | 语义 |
 |---|---|---|---|
 | `vib_call_hint` | ring_listener | watch | 时间戳，最长 30s 有效；接听或显式响铃结束时会清除 |
+| `vib_voip_session` | ring_listener | watch | 微信 VoIP 前台服务会话仍存在 |
+| `vib_voip_connected` | watch | ring_listener / watch | 本次微信通话已接通，禁止后续界面事件重新触发响铃 |
 | `vib_ring_active` | watch（每轮） | ring_play | 令牌，>20s 未刷新则视为失效 |
 | `vib_ring_play.pid` | ring_play | watch | pid 锁，防重复启动 |
 

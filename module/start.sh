@@ -5,7 +5,8 @@ pkill -f "$M/watch.sh" 2>/dev/null
 pkill -f "$M/keepalive.sh" 2>/dev/null
 pkill -f "$M/ring_listener.sh" 2>/dev/null
 pkill -f "$M/ring_play.sh" 2>/dev/null
-rm -f /data/local/tmp/vib_ring_active /data/local/tmp/vib_ring_play.pid /data/local/tmp/vib_call_hint
+rm -f /data/local/tmp/vib_ring_active /data/local/tmp/vib_ring_play.pid /data/local/tmp/vib_call_hint \
+  /data/local/tmp/vib_voip_session /data/local/tmp/vib_voip_connected
 cmd vibrator_manager cancel >/dev/null 2>&1
 sleep 1
 ( setsid sh "$M/run_watch.sh" >/dev/null 2>&1 < /dev/null & )

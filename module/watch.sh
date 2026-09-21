@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# HapticBoost scene watcher v7
+# HapticBoost scene watcher v8
 # Only boost while the phone is ringing. Answering, rejecting, or hanging up
 # returns to the normal profile and actively stops the synthetic ring pulse.
 MODDIR=${0%/*}
@@ -7,6 +7,8 @@ CFG=$MODDIR/config.sh
 LOG=/data/local/tmp/vibrate_boost.log
 HB=/data/local/tmp/vibrate_boost_heartbeat
 HINTF=/data/local/tmp/vib_call_hint
+VOIPF=/data/local/tmp/vib_voip_session
+VOIPC=/data/local/tmp/vib_voip_connected
 ACT=/data/local/tmp/vib_ring_active
 echo $$ > /data/local/tmp/vibrate_boost.pid
 
@@ -40,6 +42,16 @@ while true; do
   RP=${CALL_BOOST:-1}
 
   NOW=$(date +%s)
+  # A crashed VoIP service must not leave incoming-call suppression behind
+  # forever. Six hours is longer than a normal call but still self-healing.
+  if [ -f "$VOIPC" ]; then
+    VT=$(cat "$VOIPC" 2>/dev/null)
+    case "$VT" in
+      ''|*[!0-9]*) rm -f "$VOIPC" "$VOIPF" ;;
+      *) [ $((NOW - VT)) -gt 21600 ] && rm -f "$VOIPC" "$VOIPF" ;;
+    esac
+  fi
+
   EXPLICIT_RING=0; ACTIVE_CALL=0; HINT_RING=0; SRC="-"
   if [ "${CALL_BOOST:-1}" = "1" ]; then
     TD=$($DT 2>/dev/null)
@@ -54,8 +66,13 @@ while true; do
     fi
 
     # A connected call is never a ringing state. Also clear a stale hint as
-    # soon as telecom reports that the call was answered.
+    # soon as telecom reports that the call was answered. WeChat may emit
+    # more Activity/service events after answering, so latch this VoIP session
+    # as connected until its foreground service actually stops.
     if [ "$ACTIVE_CALL" = "1" ]; then
+      rm -f "$HINTF"
+      [ -f "$VOIPF" ] && date +%s > "$VOIPC"
+    elif [ -f "$VOIPC" ]; then
       rm -f "$HINTF"
     elif [ "$WAS_EXPLICIT_RING" = "1" ] && [ "$EXPLICIT_RING" = "0" ]; then
       # Explicit ringing disappeared: rejected or ended before answer.

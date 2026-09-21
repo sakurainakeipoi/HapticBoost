@@ -125,13 +125,16 @@ docs/   TECH_NOTES.md / BUILD.md / ROADMAP.md
 | `vibrate_boost.log` | 场景切换记录 |
 | `vibrate_boost_heartbeat` | 心跳 + 事件（`STATE` / `alive` / `ring_play`） |
 | `vib_call_hint` | 一次性来电提示（内容 = unix 时间戳） |
+| `vib_voip_session` | 微信 VoIP 前台服务会话标记 |
+| `vib_voip_connected` | 微信通话已接通锁；服务停止时清除 |
 | `vib_ring_active` | ring_play 的「继续震」令牌，watcher 每轮刷新 |
 | `vib_ring_play.pid` | ring_play 的 pid 锁（防重复启动） |
 
 ### 3.2 进程间「协议」（改代码前必须理解）
 
 ```
-ring_listener.sh  --(写 vib_call_hint)-->  watch.sh
+ring_listener.sh  --(写 hint / VoIP 会话)-->  watch.sh
+watch.sh          --(接通后写 connected 锁)--> ring_listener.sh
 watch.sh          --(写 vib_ring_active, 每轮刷新)-->  ring_play.sh
 watch.sh          --(检查 vib_ring_play.pid 不存在才启动)-->  ring_play.sh
 ring_play.sh      --(令牌消失 / watcher 终止并 cancel 就退出)-->
