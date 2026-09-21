@@ -9,7 +9,7 @@
 | # | 问题 | 影响 | 建议 |
 |---|---|---|---|
 | A1 | **重复实例**：`start.sh` 与 `keepalive.sh` 可能同时拉起 watch | 多个进程同时写节点，行为不确定 | 加锁：用 `mkdir /data/local/tmp/vb.lock` 做原子锁；或 keepalive 只做「检查 + 单次拉起」 |
-| A2 | `restore.sh` 只 `pkill watch.sh` | 其他守护进程仍在跑，可能把值写回去 | 一并 kill `run_watch/keepalive/ring_listener/ring_play`，并 `rm config.sh` 或改成恢复后禁用 |
+| A2 | ~~`restore.sh` 只停止 watcher~~ | ✅ 已完成：逐 PID 停止 `run_watch/keepalive/ring_listener/ring_play`，避免守护进程写回 |
 | A3 | 模态：`watch.sh` 每轮 `dumpsys telecom` | 每秒一次 dumpsys 有微量耗电 | 可改为「事件优先」：平时低频（3-5s），收到 hint 才切高频 |
 | A4 | 机型硬编码 | 换个机型就失效 | 启动时探测节点是否存在，不存在则优雅退出并提示 |
 | A5 | ~~没有 Magisk 模块的 `customize.sh`~~ | ✅ **已解决** | 已加 `customize.sh`：机型检测 + 补权限 + 自动装 App |
