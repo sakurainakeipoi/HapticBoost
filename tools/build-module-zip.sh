@@ -12,8 +12,12 @@ cd "$ROOT"
 VERSION="$(grep '^version=' module/module.prop | cut -d= -f2)"
 OUT="dist/haptic-boost-v${VERSION}.zip"
 
-# 找配套 APK（可选）
-APK="$(ls "dist/HapticBoost-${VERSION}"-*.apk 2>/dev/null | head -1 || true)"
+# 找配套 APK（可选）：发布签名优先，开发阶段才回退到 debug。
+if [ -f "dist/HapticBoost-${VERSION}-release.apk" ]; then
+  APK="dist/HapticBoost-${VERSION}-release.apk"
+else
+  APK="$(ls "dist/HapticBoost-${VERSION}"-debug.apk 2>/dev/null | head -1 || true)"
+fi
 
 # 1) 准备临时目录
 TMP="$(mktemp -d)"

@@ -113,6 +113,9 @@ new ProcessBuilder("su", "-c", cmd).start();
 Release keystore 和密码不得进入仓库。推荐从环境变量或忽略的
 `keystore.properties` 读取：
 
+> 首次生成后，请把 keystore 与密码分别备份到安全位置。丢失 keystore
+> 或密码后，将无法用同一签名升级已经安装的 App。
+
 ```text
 KEYSTORE_PATH
 KEYSTORE_PASSWORD
@@ -120,7 +123,9 @@ KEY_ALIAS
 KEY_PASSWORD
 ```
 
-正式签名配置将在发布步骤接入。签名前可先构建 unsigned release：
+工程会优先从环境变量读取上述四项；环境变量未设置时，读取仓库根目录中
+被 Git 忽略的 `keystore.properties`。四项齐全时，`release` 变体自动使用
+正式签名；缺少任意一项时仍可构建 unsigned release：
 
 ```powershell
 .\gradlew.bat :app:assembleRelease
