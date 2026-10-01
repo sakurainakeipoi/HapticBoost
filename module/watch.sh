@@ -1,8 +1,9 @@
 #!/system/bin/sh
-# HapticBoost scene watcher v9
+# HapticBoost scene watcher v10
 # Only boost while the phone is ringing. Answering, rejecting, or hanging up
 # returns to the normal profile and actively stops the synthetic ring pulse.
 MODDIR=${0%/*}
+. "$MODDIR/ringer_mode.sh"
 CFG=$MODDIR/config.sh
 LOG=/data/local/tmp/vibrate_boost.log
 HB=/data/local/tmp/vibrate_boost_heartbeat
@@ -22,7 +23,7 @@ read_mode() {
   echo "$1" | sed -n '/CallAudioModeStateMachine/,/Pending Msg/p' | grep -oE 'Mode MODE_[A-Z_]+' | tail -n 1 | sed 's/.*Mode //'
 }
 read_audio_mode() {
-  $DA 2>/dev/null | sed -n 's/^ *- Actual mode = //p' | head -n 1
+  printf '%s\n' "$1" | sed -n 's/^ *- Actual mode = //p' | head -n 1
 }
 ring_count() {
   echo "$1" | awk '/^ Ringing calls:/{f=1;next} /^ Holding calls:/{f=0} f&&/[^ \t]/{c++} END{print c+0}'
@@ -57,7 +58,7 @@ while true; do
     esac
   fi
 
-  EXPLICIT_RING=0; ACTIVE_CALL=0; HINT_RING=0; SRC="-"
+  EXPLICIT_RING=0; ACTIVE_CALL=0; HINT_RING=0; SRC="-"; AUDIO_STATE=""
   if [ "${CALL_BOOST:-1}" = "1" ]; then
     TD=$($DT 2>/dev/null)
     MODE=$(read_mode "$TD")
@@ -66,21 +67,28 @@ while true; do
       MODE_IN_CALL|MODE_IN_COMMUNICATION) ACTIVE_CALL=1; SRC="mode:$MODE" ;;
     esac
 
+    RC=$(ring_count "$TD")
+    if [ "$RC" -gt 0 ] && [ "$ACTIVE_CALL" = "0" ]; then
+      EXPLICIT_RING=1; SRC="ringList:$RC"
+    fi
+
+    # Read live AudioService state only when a call/hint needs it. Reuse this
+    # snapshot for both VoIP answer detection and the ringer-mode policy.
+    if [ "$EXPLICIT_RING" = "1" ] || [ "$WAS_RINGING" = "1" ] ||
+       [ -f "$VOIPF" ] || [ -f "$HINTF" ]; then
+      AUDIO_STATE=$($DA 2>/dev/null) || AUDIO_STATE=""
+    fi
+
     # Third-party VoIP apps such as WeChat do not appear in dumpsys telecom on
     # this device. Once their foreground-service session exists, Android's
     # audio service is authoritative: recording/communication mode starts at
     # answer time, not while the incoming call is merely ringing.
     if [ "$ACTIVE_CALL" = "0" ] && { [ -f "$VOIPF" ] || [ -f "$HINTF" ]; }; then
-      AUDIO_MODE=$(read_audio_mode)
+      AUDIO_MODE=$(read_audio_mode "$AUDIO_STATE")
       case "$AUDIO_MODE" in
         MODE_IN_CALL|MODE_IN_COMMUNICATION)
           ACTIVE_CALL=1; SRC="audio:$AUDIO_MODE" ;;
       esac
-    fi
-
-    RC=$(ring_count "$TD")
-    if [ "$RC" -gt 0 ] && [ "$ACTIVE_CALL" = "0" ]; then
-      EXPLICIT_RING=1; SRC="ringList:$RC"
     fi
 
     # A connected call is never a ringing state. Also clear a stale hint as
@@ -88,6 +96,7 @@ while true; do
     # more Activity/service events after answering, so latch this VoIP session
     # as connected until its foreground service actually stops.
     if [ "$ACTIVE_CALL" = "1" ]; then
+      EXPLICIT_RING=0
       rm -f "$HINTF"
       [ -f "$VOIPF" ] && date +%s > "$VOIPC"
     elif [ -f "$VOIPC" ]; then
@@ -105,11 +114,17 @@ while true; do
   fi
   WAS_EXPLICIT_RING=$EXPLICIT_RING
 
-  if [ "$EXPLICIT_RING" = "1" ] || [ "$HINT_RING" = "1" ]; then
+  # Keep call/session tracking alive in silent mode so answering still latches
+  # the connected state. Only the boost/output is gated by ringer mode.
+  if { [ "$EXPLICIT_RING" = "1" ] || [ "$HINT_RING" = "1" ]; } &&
+     ringer_allows_boost "$AUDIO_STATE"; then
     RINGING=1
     V=$CALL_VMAX; F=$CALL_FIFO_VMAX; C=$CALL_CL_VMAX; ST=call
   else
     RINGING=0
+    if [ "$EXPLICIT_RING" = "1" ] || [ "$HINT_RING" = "1" ]; then
+      SRC="ringer:blocked:$SRC"
+    fi
     V=$NORMAL_VMAX; F=$NORMAL_FIFO_VMAX; C=$NORMAL_CL_VMAX; ST=normal
   fi
 

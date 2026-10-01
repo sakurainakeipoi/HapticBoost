@@ -131,6 +131,18 @@ watcher 仅在 VoIP 会话标记存在时读取该音频状态，并在接通的
 `vib_voip_connected` 会话锁；同一通话后续的 Activity resume 或前台服务事件不再触发 hint。
 只有 `VoipNewForegroundService` 真正停止时才解除会话锁，避免接通后再次震动。
 
+### 静音模式策略（watcher v10）
+
+`MODE_RINGTONE` 只表示通话音频处于响铃阶段，不表示手机的铃声模式为“响铃”。
+必须另读 `dumpsys audio` 的 `Ringer mode`：`SILENT` / `0` 禁止来电增强，
+`VIBRATE` / `1` 与 `NORMAL` / `2` 才允许。优先使用 internal mode，external
+mode 明确为静音时同样禁止；无法明确判定允许或读取失败时保持不启动。
+
+`ringer_mode.sh` 提供共享判断，watcher 在系统电话和 VoIP 两条来源进入来电档前检查，
+`ring_play.sh` 在每次脉冲前再次检查。切入静音后 watcher 会恢复日常档、撤销播放令牌
+并取消正在播放的补偿震动。静音只限制增强输出，会话和接通状态仍继续跟踪，
+防止静音中接听、随后恢复响铃模式导致同一通话再次震动。
+
 ---
 
 ## 5. 进程架构

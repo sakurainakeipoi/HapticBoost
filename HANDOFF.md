@@ -100,6 +100,7 @@ module/
   service.sh         开机入口：等 sys.boot_completed=1 后再 sleep 12 秒启动
   start.sh           清理旧进程 + 拉起 run_watch / ring_listener / keepalive
   watch.sh           ★核心：轮询场景 → 写节点 → 拉起/停止 ring_play
+  ringer_mode.sh     响铃/振动模式才允许增强；静音或音频状态读取失败时禁止
   ring_listener.sh   监听 logcat events，写「来电提示文件」hint
   ring_play.sh       ★仅在响铃期间循环强震（读 RING_DUR / RING_GAP）
   keepalive.sh       看门狗：发现进程不在就重启

@@ -176,6 +176,14 @@ bash tools/build-module-zip.sh
 
 发布前还应执行真机验证：读取配置、保存配置、滑块预览、来电切档、挂断恢复和重启自启。
 
+来电静音策略的离线回归（需 Python 3 与 Bash；Windows 可用 Git Bash）：
+
+```text
+python tools/test-ringer-mode.py
+```
+
+测试使用临时沙盒模拟电话 / VoIP、系统铃声模式和震动命令，不连接手机或触发真实震动。
+
 ---
 
 ## 附：旧轻量构建链
