@@ -42,7 +42,7 @@ if [ -e /odm/etc/aac_richtap.config ] || [ -e /vendor/bin/hw/vendor.oplus.hardwa
 else
   ui_print "- 未检测到 RichTap HAL"
   ui_print "  → 你的铃声震动可能本来就受 vmax 控制"
-  ui_print "  → 如不需要请把 config.sh 里 RING_PLAY 设为 0"
+  ui_print "  → 如不需要，请在 App 中关闭「来电增强」（CALL_BOOST=0）"
 fi
 ui_print " "
 

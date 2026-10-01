@@ -6,6 +6,9 @@
 一个 Root + Magisk 的轻量模块（纯 sysfs 写入，**不修改任何系统文件**），
 配一个原生小 App 用来可视化调参。
 
+当前版本：[**v1.2.2**](https://github.com/sakurainakeipoi/HapticBoost/releases/tag/v1.2.2)。
+修复静音模式下系统电话和微信来电仍触发增强震动的问题；使用旧版模块的用户请升级模块 ZIP。
+
 ---
 
 ## ✨ 特性
@@ -69,7 +72,7 @@ su -c 'for n in vmax fifo_vmax cl_vmax; do p=/sys/class/qcom-haptics/$n; [ -e "$
 | 结果 | 含义 |
 |---|---|
 | 三项均显示 `OK` | 🟡 **满足核心条件，仍需从低电压开始实测** |
-| 只有部分节点 | 🟠 **当前安装包会拒绝安装，需要针对该驱动适配** |
+| 只有部分节点 | 🟠 **安装器会提示节点不完整，需要针对该驱动适配** |
 | 任一项显示 `MISSING_OR_READ_ONLY` | 🔴 **当前版本不能完整支持** |
 
 > 模块的 `customize.sh` 会自动做这个检测并给出提示。
@@ -108,15 +111,15 @@ adb push module/* /data/adb/modules/haptic_boost_qcom/
 adb shell su -c 'chmod 0755 /data/adb/modules/haptic_boost_qcom/*.sh'
 
 # 2) 装 App（必须先拷到 /data/local/tmp，system_server 读不了 /sdcard）
-adb push dist/HapticBoost-1.2.1-release.apk /data/local/tmp/
-adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.2.1-release.apk'
+adb push dist/HapticBoost-1.2.2-release.apk /data/local/tmp/
+adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.2.2-release.apk'
 ```
 
 ### 自己打包 zip
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.1.zip
+# → dist/haptic-boost-v1.2.2.zip
 ```
 
 发布包同时包含新式根目录模块结构与 `META-INF` 兼容入口，可由 KernelSU、
@@ -190,8 +193,8 @@ HapticBoost/
 ├── tools/
 │   └── build-module-zip.sh # 一键打包模块 zip
 ├── dist/                   # 预编译产物（已被 .gitignore 忽略）
-│   ├── haptic-boost-v1.2.1.zip       # ← 可直接刷的模块包
-│   └── HapticBoost-1.2.1-release.apk
+│   ├── haptic-boost-v1.2.2.zip       # ← 可直接刷的模块包
+│   └── HapticBoost-1.2.2-release.apk
 ├── HANDOFF.md              # ★ 交接文档（给协作者 / 其他 AI）
 ├── LICENSE                 # MIT
 └── README.md

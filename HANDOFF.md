@@ -26,7 +26,8 @@
 | 来电检测（系统电话） | ✅ 工作 | `dumpsys telecom` |
 | 来电检测（微信/QQ VoIP） | ✅ 工作 | `logcat -b events` |
 | 来电循环强震铃音 | ✅ 工作 | `dmesg \| grep -i haptic` |
-| 接听 / 挂断立即停止 | 🧪 v1.2.1 待手机复测 | 日志 `STATE normal` + `ring STOP` |
+| 接听 / 挂断停止 | ✅ 2026-10-01 用户复测通过 | 日志 `STATE normal` + `ring STOP` |
+| 静音时不启用来电增强 | ✅ watcher v10；2026-10-01 用户复测通过 | 电话 / 微信；响铃和振动模式正常，切入静音取消增强 |
 | 看门狗（进程自愈） | ✅ 工作 | `keepalive.sh` |
 | 开机自启 | ✅ 工作 | `service.sh` |
 | 可视化调参 App | ✅ 已迁移 Gradle / Material 3 | `./gradlew :app:assembleDebug` |
@@ -202,7 +203,7 @@ sh /data/adb/modules/haptic_boost_qcom/restore.sh
 - ✅ **模块 zip 已可一键产出**：
   ```bash
   bash tools/build-module-zip.sh
-  # → dist/haptic-boost-v1.2.1.zip（内嵌 Material 3 App）
+  # → dist/haptic-boost-v1.2.2.zip（内嵌 Material 3 App）
   #   内嵌 App + customize.sh（刷模块时自动 pm install 装 App）
   ```
   zip 内部结构已验证：`module.prop` 在根、`.sh` 为 0755、`module.prop` 为 0644。

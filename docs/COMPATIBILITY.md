@@ -7,7 +7,7 @@
 
 | 结果 | 品牌与机型 | 设备代号 | SoC | 触觉控制器 / 驱动 | 马达 | 系统与内核 | Root 环境 | 测试版本 |
 |---|---|---|---|---|---|---|---|---|
-| ✅ 通过 | 真我 GT5 Pro | RMX3888 / RE5C37 | Qualcomm SM8650（Snapdragon 8 Gen 3） | PM8550B；`qcom,hv-haptics`；Linux 驱动 `qcom-hv-haptics` | X 轴 LRA；174 Hz；驱动报告标称阻抗 9 Ω | Android 16；realme UI V16.1；Linux 6.1.141 | Kitsune Magisk 27001 | HapticBoost 1.2.1 |
+| ✅ 通过 | 真我 GT5 Pro | RMX3888 / RE5C37 | Qualcomm SM8650（Snapdragon 8 Gen 3） | PM8550B；`qcom,hv-haptics`；Linux 驱动 `qcom-hv-haptics` | X 轴 LRA；174 Hz；驱动报告标称阻抗 9 Ω | Android 16；realme UI V16.1；Linux 6.1.141 | Kitsune Magisk 27001 | HapticBoost 1.2.2（watcher v10 静音修复；2026-10-01 复测） |
 
 公开资料中，realme 将该机型标为 X 轴线性马达；官方安全页面也将
 “真我 GT5 Pro”与“RMX3888”对应。设备运行时信息则由 ADB + Root 直接读取。
@@ -111,6 +111,8 @@ OPlus 功能编译条件内，具体机型、地区版本和系统版本仍可�
 | 日常通知、触感反馈与预览 | ✅ |
 | 系统电话：响铃增强，接听 / 拒接 / 挂断后停止 | ✅ |
 | 微信语音通话：响铃增强，接听后进入音频通信模式并停止 | ✅ |
+| 系统电话 / 微信来电：静音时不增强，响铃与振动模式正常 | ✅ watcher v10；2026-10-01 用户复测通过 |
+| 来电过程中切入静音：停止补偿震动并恢复日常档 | ✅ 离线行为回归通过；系统铃声模式由 AudioService 读取 |
 | QQ、Telegram、WhatsApp、Discord 等第三方通话 | ⬜ 尚未实测 |
 
 ## 兼容等级

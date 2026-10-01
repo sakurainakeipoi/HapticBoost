@@ -48,7 +48,7 @@ app/build/outputs/apk/debug/app-debug.apk
 用于模块联调时，将它复制为：
 
 ```text
-dist/HapticBoost-1.2.1-release.apk
+dist/HapticBoost-1.2.2-release.apk
 ```
 
 发布版签名见本文 §5；不要发布调试密钥签名的 APK。
@@ -140,13 +140,13 @@ KEY_PASSWORD
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.1.zip
+# → dist/haptic-boost-v1.2.2.zip
 ```
 
 结构要求：
 
 ```text
-haptic-boost-v1.2.1.zip
+haptic-boost-v1.2.2.zip
 ├── module.prop
 ├── HapticBoost.apk
 ├── service.sh
