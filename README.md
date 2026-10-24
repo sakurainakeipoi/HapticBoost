@@ -6,8 +6,8 @@
 一个 Root + Magisk 的轻量模块（纯 sysfs 写入，**不修改任何系统文件**），
 配一个原生小 App 用来可视化调参。
 
-当前版本：[**v1.2.2**](https://github.com/sakurainakeipoi/HapticBoost/releases/tag/v1.2.2)。
-修复静音模式下系统电话和微信来电仍触发增强震动的问题；使用旧版模块的用户请升级模块 ZIP。
+当前版本：[**v1.3.0**](https://github.com/sakurainakeipoi/HapticBoost/releases/tag/v1.3.0)。
+新增日常震动预览、未保存调整保留与撤销、来电节奏设置及保存校验。已安装 v1.2.2 模块的用户只需覆盖安装新版 APK；首次安装请使用模块 ZIP。
 
 ---
 
@@ -111,15 +111,15 @@ adb push module/* /data/adb/modules/haptic_boost_qcom/
 adb shell su -c 'chmod 0755 /data/adb/modules/haptic_boost_qcom/*.sh'
 
 # 2) 装 App（必须先拷到 /data/local/tmp，system_server 读不了 /sdcard）
-adb push dist/HapticBoost-1.2.2-release.apk /data/local/tmp/
-adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.2.2-release.apk'
+adb push dist/HapticBoost-1.3.0-release.apk /data/local/tmp/
+adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.3.0-release.apk'
 ```
 
 ### 自己打包 zip
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.2.zip
+# → dist/haptic-boost-v1.3.0.zip
 ```
 
 发布包同时包含新式根目录模块结构与 `META-INF` 兼容入口，可由 KernelSU、
@@ -197,8 +197,8 @@ HapticBoost/
 ├── tools/
 │   └── build-module-zip.sh # 一键打包模块 zip
 ├── dist/                   # 预编译产物（已被 .gitignore 忽略）
-│   ├── haptic-boost-v1.2.2.zip       # ← 可直接刷的模块包
-│   └── HapticBoost-1.2.2-release.apk
+│   ├── haptic-boost-v1.3.0.zip       # ← 可直接刷的模块包
+│   └── HapticBoost-1.3.0-release.apk
 ├── HANDOFF.md              # ★ 交接文档（给协作者 / 其他 AI）
 ├── LICENSE                 # MIT
 └── README.md

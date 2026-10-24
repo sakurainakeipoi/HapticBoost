@@ -48,7 +48,7 @@ app/build/outputs/apk/debug/app-debug.apk
 用于模块联调时，将它复制为：
 
 ```text
-dist/HapticBoost-1.2.2-release.apk
+dist/HapticBoost-1.3.0-release.apk
 ```
 
 发布版签名见本文 §5；不要发布调试密钥签名的 APK。
@@ -103,7 +103,7 @@ new ProcessBuilder("su", "-c", cmd).start();
 // sh $MOD/apply.sh normal
 ```
 
-当前 App 会读取并保留未显示在 UI 中的闭环电压、轮询与铃声节奏字段。
+当前 App 会读取并保留未显示在 UI 中的闭环电压和轮询字段；铃声时长与间隔可直接在 UI 中调整。
 `CALL_BOOST` 与 `RING_PLAY` 在 UI 中合并为一个“来电增强”开关，保存时写入相同值；
 `HOLD` 固定为 0，`HINT_WINDOW` 最多 30 秒，保证接听或挂断后尽快停止。
 
@@ -140,13 +140,13 @@ KEY_PASSWORD
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.2.2.zip
+# → dist/haptic-boost-v1.3.0.zip
 ```
 
 结构要求：
 
 ```text
-haptic-boost-v1.2.2.zip
+haptic-boost-v1.3.0.zip
 ├── module.prop
 ├── HapticBoost.apk
 ├── service.sh

@@ -1,6 +1,6 @@
 id=haptic_boost_qcom
 name=HapticBoost (qcom-hv-haptics)
-version=1.2.2
-versionCode=5
+version=1.3.0
+versionCode=6
 author=法秋
 description=高通 qcom-hv-haptics 线性马达电压增强：调节 vmax/fifo_vmax/cl_vmax，并附带来电强震。理论上通用于采用 PM8550B 内置 HV Haptics、启用相同驱动且暴露三个可写节点的设备；PM8350B/PM5100 为待验证候选。已在 realme RMX3888 (SM8650/PM8550B) 实测。纯 sysfs 写入，不修改系统文件。配置：config.sh
