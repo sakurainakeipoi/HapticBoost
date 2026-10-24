@@ -291,6 +291,17 @@
                     android:valueTo="9500"
                     app:tickVisible="false" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/normalPreviewButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:minHeight="48dp"
+                    android:text="@string/preview_normal"
+                    app:icon="@drawable/ic_play"
+                    app:iconGravity="textStart" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -338,6 +349,25 @@
                     android:valueFrom="0"
                     android:valueTo="9500"
                     app:tickVisible="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/feedbackPreviewButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:minHeight="48dp"
+                    android:text="@string/preview_feedback"
+                    app:icon="@drawable/ic_play"
+                    app:iconGravity="textStart" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/preview_daily_hint"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.divider.MaterialDivider
                     android:layout_width="match_parent"
@@ -464,6 +494,86 @@
                         android:valueTo="9500"
                         app:tickVisible="false" />
 
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/ring_rhythm_hint"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/rhythmShort"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:text="@string/rhythm_short" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/rhythmEven"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="8dp"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:text="@string/rhythm_even" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/rhythmLong"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:text="@string/rhythm_long" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/ringDurationValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorPrimary" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/ringDurationSlider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/ring_duration_label"
+                        android:valueFrom="100"
+                        android:valueTo="3000"
+                        android:stepSize="1"
+                        app:tickVisible="false" />
+
+                    <TextView
+                        android:id="@+id/ringGapValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorPrimary" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/ringGapSlider"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/ring_gap_label"
+                        android:valueFrom="0"
+                        android:valueTo="3000"
+                        android:stepSize="1"
+                        app:tickVisible="false" />
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/previewButton"
                         style="@style/Widget.Material3.Button.TonalButton"
@@ -477,6 +587,23 @@
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/draftStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:accessibilityLiveRegion="polite"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorPrimary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/undoButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/undo_changes" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/applyButton"

@@ -165,6 +165,14 @@ Magisk 27 安装流程的 Kitsune 等管理器；KernelSU 与新版 Magisk 会�
 
 ## 7. 验证
 
+App 配置解析、保存读回及命令超时回归（不连接手机）：
+
+```powershell
+.\tools\test-app.ps1
+```
+
+使用 `JAVA_HOME` 指定 JDK；未指定时使用仓库本地的 JDK 17。
+
 ```powershell
 .\gradlew.bat :app:assembleDebug :app:lintDebug
 ```

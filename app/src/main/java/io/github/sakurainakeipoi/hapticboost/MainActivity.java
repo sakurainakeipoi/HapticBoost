@@ -18,8 +18,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +32,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String CFG = MOD + "/config.sh";
     private static final int MAX_MV = 9500;
 
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    // Keep operations serialized across Activity recreation as well as button taps.
+    private static final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     private View contentRoot;
     private MaterialCardView statusCard;
@@ -48,6 +47,19 @@ public class MainActivity extends AppCompatActivity {
     private Slider normalFifoSlider;
     private Slider callVmaxSlider;
     private Slider callFifoSlider;
+    private Slider ringDurationSlider;
+    private Slider ringGapSlider;
+    private TextView ringDurationValue;
+    private TextView ringGapValue;
+    private TextView draftStatus;
+    private MaterialButton undoButton;
+    private View rhythmShort;
+    private View rhythmEven;
+    private View rhythmLong;
+    private String savedConfiguration;
+    private boolean applyUnverified;
+    private boolean rendering;
+    private boolean loading;
 
     private TextView normalVmaxValue;
     private TextView normalFifoValue;
@@ -58,8 +70,11 @@ public class MainActivity extends AppCompatActivity {
     private View incomingControls;
     private MaterialButton refreshButton;
     private MaterialButton previewButton;
+    private MaterialButton normalPreviewButton;
+    private MaterialButton feedbackPreviewButton;
     private MaterialButton applyButton;
     private MaterialButton restoreButton;
+    private boolean busy;
 
     private int normalVmax = 5500;
     private int normalFifoVmax = 4800;
@@ -83,7 +98,12 @@ public class MainActivity extends AppCompatActivity {
 
         bindViews();
         bindInteractions();
+        String draft = getPreferences(MODE_PRIVATE).getString("draft", null);
+        savedConfiguration = getPreferences(MODE_PRIVATE).getString("baseline", null);
+        applyUnverified = getPreferences(MODE_PRIVATE).getBoolean("applyUnverified", false);
+        if (draft != null && !parseConfiguration(draft)) savedConfiguration = null;
         renderControls();
+        setBusy(false);
         runEntranceMotion();
     }
 
@@ -94,9 +114,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onDestroy() {
-        worker.shutdownNow();
-        super.onDestroy();
+    protected void onPause() {
+        persistDraft();
+        super.onPause();
     }
 
     private void bindViews() {
@@ -112,6 +132,15 @@ public class MainActivity extends AppCompatActivity {
         normalFifoSlider = findViewById(R.id.normalFifoSlider);
         callVmaxSlider = findViewById(R.id.callVmaxSlider);
         callFifoSlider = findViewById(R.id.callFifoSlider);
+        ringDurationSlider = findViewById(R.id.ringDurationSlider);
+        ringGapSlider = findViewById(R.id.ringGapSlider);
+        ringDurationValue = findViewById(R.id.ringDurationValue);
+        ringGapValue = findViewById(R.id.ringGapValue);
+        draftStatus = findViewById(R.id.draftStatus);
+        undoButton = findViewById(R.id.undoButton);
+        rhythmShort = findViewById(R.id.rhythmShort);
+        rhythmEven = findViewById(R.id.rhythmEven);
+        rhythmLong = findViewById(R.id.rhythmLong);
 
         normalVmaxValue = findViewById(R.id.normalVmaxValue);
         normalFifoValue = findViewById(R.id.normalFifoValue);
@@ -122,6 +151,8 @@ public class MainActivity extends AppCompatActivity {
         incomingControls = findViewById(R.id.incomingControls);
         refreshButton = findViewById(R.id.refreshButton);
         previewButton = findViewById(R.id.previewButton);
+        normalPreviewButton = findViewById(R.id.normalPreviewButton);
+        feedbackPreviewButton = findViewById(R.id.feedbackPreviewButton);
         applyButton = findViewById(R.id.applyButton);
         restoreButton = findViewById(R.id.restoreButton);
 
@@ -149,13 +180,30 @@ public class MainActivity extends AppCompatActivity {
                 "fifo_vmax", true, value -> callFifoVmax = value);
 
         callBoostSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (rendering) return;
             callBoost = checked;
             ringPlay = checked;
             updateIncomingControls(checked);
+            updateDraftStatus();
+        });
+
+        bindTimingSlider(ringDurationSlider, ringDurationValue, value -> ringDuration = value);
+        bindTimingSlider(ringGapSlider, ringGapValue, value -> ringGap = value);
+        rhythmShort.setOnClickListener(view -> setRhythm(250, 500));
+        rhythmEven.setOnClickListener(view -> setRhythm(1000, 1000));
+        rhythmLong.setOnClickListener(view -> setRhythm(1500, 1000));
+        undoButton.setOnClickListener(view -> {
+            if (savedConfiguration != null) {
+                parseConfiguration(savedConfiguration);
+                renderControls();
+                persistDraft();
+            }
         });
 
         refreshButton.setOnClickListener(view -> loadConfigurationAndStatus());
         previewButton.setOnClickListener(view -> previewRingPattern());
+        normalPreviewButton.setOnClickListener(view -> previewDailyPattern(false));
+        feedbackPreviewButton.setOnClickListener(view -> previewDailyPattern(true));
         applyButton.setOnClickListener(view -> saveConfiguration(false));
         restoreButton.setOnClickListener(view -> showRestoreConfirmation());
     }
@@ -169,6 +217,7 @@ public class MainActivity extends AppCompatActivity {
             int rounded = clampVoltage(Math.round(value));
             setter.set(rounded);
             renderVoltageValue(valueView, accessibilityLabel, rounded);
+            updateDraftStatus();
         });
         slider.addOnSliderTouchListener(new Slider.OnSliderTouchListener() {
             @Override
@@ -183,6 +232,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderControls() {
+        rendering = true;
         normalVmaxSlider.setValue(clampVoltage(normalVmax));
         normalFifoSlider.setValue(clampVoltage(normalFifoVmax));
         callVmaxSlider.setValue(clampVoltage(callVmax));
@@ -192,11 +242,56 @@ public class MainActivity extends AppCompatActivity {
         ringPlay = incomingEnabled;
         callBoostSwitch.setChecked(incomingEnabled);
         updateIncomingControls(incomingEnabled);
+        ringDurationSlider.setValue(ringDuration);
+        ringGapSlider.setValue(ringGap);
+        renderTimingValue(ringDurationValue, ringDuration);
+        renderTimingValue(ringGapValue, ringGap);
 
         renderVoltageValue(normalVmaxValue, getString(R.string.normal_vmax_label), normalVmax);
         renderVoltageValue(normalFifoValue, getString(R.string.normal_fifo_label), normalFifoVmax);
         renderVoltageValue(callVmaxValue, getString(R.string.call_vmax_label), callVmax);
         renderVoltageValue(callFifoValue, getString(R.string.call_fifo_label), callFifoVmax);
+        rendering = false;
+        updateDraftStatus();
+    }
+
+    private void bindTimingSlider(Slider slider, TextView valueView, IntSetter setter) {
+        slider.addOnChangeListener((view, value, fromUser) -> {
+            if (!fromUser) return;
+            int milliseconds = Math.round(value);
+            setter.set(milliseconds);
+            renderTimingValue(valueView, milliseconds);
+            updateDraftStatus();
+        });
+    }
+
+    private void renderTimingValue(TextView valueView, int milliseconds) {
+        int label = valueView == ringDurationValue ? R.string.ring_duration_label : R.string.ring_gap_label;
+        valueView.setText(getString(R.string.timing_value_format, getString(label), milliseconds));
+    }
+
+    private void setRhythm(int duration, int gap) {
+        ringDuration = duration;
+        ringGap = gap;
+        renderControls();
+    }
+
+    private boolean hasDraft() {
+        return savedConfiguration != null && (applyUnverified
+                || !ModuleProtocol.sameConfiguration(configurationText(), savedConfiguration));
+    }
+
+    private void updateDraftStatus() {
+        draftStatus.setText(applyUnverified ? R.string.apply_unverified
+                : hasDraft() ? R.string.unsaved_changes : R.string.no_unsaved_changes);
+        undoButton.setEnabled(!busy && !loading && savedConfiguration != null && hasDraft());
+    }
+
+    private void persistDraft() {
+        getPreferences(MODE_PRIVATE).edit()
+                .putString("draft", savedConfiguration == null ? null : configurationText())
+                .putString("baseline", savedConfiguration)
+                .putBoolean("applyUnverified", applyUnverified).apply();
     }
 
     private void renderVoltageValue(TextView view, String label, int value) {
@@ -207,38 +302,56 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateIncomingControls(boolean enabled) {
         incomingControls.setAlpha(enabled ? 1f : 0.42f);
-        callVmaxSlider.setEnabled(enabled);
-        callFifoSlider.setEnabled(enabled);
-        previewButton.setEnabled(enabled);
+        boolean available = enabled && !busy && !loading && savedConfiguration != null;
+        callVmaxSlider.setEnabled(available);
+        callFifoSlider.setEnabled(available);
+        previewButton.setEnabled(available);
+        ringDurationSlider.setEnabled(available);
+        ringGapSlider.setEnabled(available);
+        rhythmShort.setEnabled(available);
+        rhythmEven.setEnabled(available);
+        rhythmLong.setEnabled(available);
     }
 
     private void loadConfigurationAndStatus() {
+        if (busy || loading) return;
+        loading = true;
+        setBusy(false);
         statusMode.setText(R.string.status_loading);
         statusDetail.setText(R.string.status_live_hint);
         refreshButton.setEnabled(false);
 
         worker.execute(() -> {
-            String configText = sh("cat " + CFG);
+            String configText = sh("[ -f " + CFG + " ] || { echo HB_NO_MODULE; exit 1; }; cat " + CFG);
             String liveText = sh(
                     "grep ' STATE ' /data/local/tmp/vibrate_boost_heartbeat 2>/dev/null | tail -n 1; "
                             + "printf '\\nvmax='; cat /sys/class/qcom-haptics/vmax 2>/dev/null; "
                             + "printf '\\nfifo_vmax='; cat /sys/class/qcom-haptics/fifo_vmax 2>/dev/null; "
                             + "printf '\\ncl_vmax='; cat /sys/class/qcom-haptics/cl_vmax 2>/dev/null"
             );
-            boolean configLoaded = parseConfiguration(configText);
+            boolean configLoaded = !commandFailed(configText) && ModuleProtocol.parse(configText) != null;
             LiveStatus liveStatus = parseLiveStatus(liveText);
 
             runOnUiThread(() -> {
-                refreshButton.setEnabled(true);
+                if (isDestroyed()) return;
+                loading = false;
+                applyUnverified = getPreferences(MODE_PRIVATE).getBoolean("applyUnverified", applyUnverified);
                 if (configLoaded) {
+                    boolean keepDraft = hasDraft();
+                    if (!keepDraft) parseConfiguration(configText);
+                    savedConfiguration = configText;
                     renderControls();
                 }
+                setBusy(busy);
                 renderStatus(configLoaded, liveStatus);
+                if (!configLoaded) statusDetail.setText(errorMessage(configText));
+                persistDraft();
             });
         });
     }
 
     private boolean parseConfiguration(String text) {
+        if (ModuleProtocol.parse(text) == null) return false;
         Pattern pattern = Pattern.compile(
                 "^\\s*(NORMAL_VMAX|NORMAL_FIFO_VMAX|NORMAL_CL_VMAX|CALL_VMAX|CALL_FIFO_VMAX|CALL_CL_VMAX|CALL_BOOST|POLL|HOLD|HINT_WINDOW|RING_PLAY|RING_DUR|RING_GAP)\\s*=\\s*([0-9]+)",
                 Pattern.MULTILINE
@@ -317,8 +430,7 @@ public class MainActivity extends AppCompatActivity {
         return value >= 0 ? String.valueOf(value) : getString(R.string.not_available);
     }
 
-    private void saveConfiguration(boolean restoring) {
-        ringPlay = callBoost;
+    private String configurationText() {
         StringBuilder config = new StringBuilder();
         config.append("# ============================================================\n");
         config.append("#  HapticBoost — App 写入配置\n");
@@ -333,22 +445,33 @@ public class MainActivity extends AppCompatActivity {
         config.append("POLL=").append(poll).append("\n");
         config.append("HOLD=").append(hold).append("\n");
         config.append("HINT_WINDOW=").append(hintWindow).append("\n");
-        config.append("RING_PLAY=").append(ringPlay ? 1 : 0).append("\n");
+        config.append("RING_PLAY=").append(callBoost ? 1 : 0).append("\n");
         config.append("RING_DUR=").append(ringDuration).append("\n");
         config.append("RING_GAP=").append(ringGap).append("\n");
+        return config.toString();
+    }
 
-        String encoded = Base64.encodeToString(config.toString().getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
+    private void saveConfiguration(boolean restoring) {
+        if (busy || loading) return;
+        String snapshot = configurationText();
+        String encoded = Base64.encodeToString(snapshot.getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
         setBusy(true);
+        applyButton.setText(R.string.saving_settings);
         worker.execute(() -> {
-            String result = sh("echo '" + encoded + "' | base64 -d > " + CFG
-                    + " && sh " + MOD + "/apply.sh normal");
-            boolean failed = result.startsWith("ERR:") || result.contains("[exit=");
+            String result = sh(ModuleProtocol.saveCommand(encoded));
+            boolean failed = commandFailed(result) || !ModuleProtocol.verified(snapshot, result);
             runOnUiThread(() -> {
+                // Persist the result even if a configuration change destroyed this Activity.
+                applyUnverified = failed;
+                if (!failed) savedConfiguration = snapshot;
+                persistDraft();
+                if (isDestroyed()) return;
                 setBusy(false);
+                applyButton.setText(R.string.apply_settings);
                 if (failed) {
-                    statusMode.setText(R.string.load_failed);
-                    statusDetail.setText(result);
-                    Toast.makeText(this, R.string.load_failed, Toast.LENGTH_SHORT).show();
+                    statusMode.setText(R.string.save_failed);
+                    statusDetail.setText(errorMessage(result));
+                    Toast.makeText(this, errorMessage(result), Toast.LENGTH_LONG).show();
                     return;
                 }
                 Toast.makeText(this, restoring ? R.string.restore_factory : R.string.saved, Toast.LENGTH_SHORT).show();
@@ -360,31 +483,62 @@ public class MainActivity extends AppCompatActivity {
     private void previewVoltage(String node, int value, boolean feedbackPath) {
         worker.execute(() -> {
             String trigger = feedbackPath ? "cmd vibrator_manager feedback 6"
-                    : "cmd vibrator_manager synced oneshot 70 96";
+                    : "cmd vibrator_manager synced oneshot -a 70 96";
             sh("echo " + value + " > /sys/class/qcom-haptics/" + node + "; " + trigger
                     + "; sleep 0.12; sh " + MOD + "/apply.sh normal");
+        });
+    }
+
+    private void previewDailyPattern(boolean feedbackPath) {
+        if (busy) {
+            return;
+        }
+        String node = feedbackPath ? "fifo_vmax" : "vmax";
+        int value = clampVoltage(feedbackPath ? normalFifoVmax : normalVmax);
+        String trigger = feedbackPath ? "cmd vibrator_manager feedback 6"
+                : "cmd vibrator_manager synced oneshot -a 250 96";
+        setBusy(true);
+        Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
+        worker.execute(() -> {
+            // Always restore the saved daily profile, including after a failed trigger.
+            // Do not reload configuration here: keep the user's unsaved slider values.
+            String command = "trap 'rc=$?; sh " + MOD
+                    + "/apply.sh normal || rc=1; exit \"$rc\"' EXIT; "
+                    + "echo " + value + " > /sys/class/qcom-haptics/" + node + " || exit 1; "
+                    + "for i in 1 2 3; do " + trigger + " || exit 1; sleep 0.3; done";
+            String result = sh(command);
+            boolean failed = result.startsWith("ERR:") || result.contains("[exit=");
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                setBusy(false);
+                Toast.makeText(this, failed ? R.string.preview_failed : R.string.preview_complete,
+                        Toast.LENGTH_SHORT).show();
+            });
         });
     }
 
     private void previewRingPattern() {
         int duration = ringDuration;
         int gap = ringGap;
-        previewButton.setEnabled(false);
+        setBusy(true);
         Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
         worker.execute(() -> {
             StringBuilder command = new StringBuilder();
-            command.append("echo ").append(callVmax).append(" > /sys/class/qcom-haptics/vmax;");
-            command.append("echo ").append(callFifoVmax).append(" > /sys/class/qcom-haptics/fifo_vmax;");
-            command.append("echo ").append(callClVmax).append(" > /sys/class/qcom-haptics/cl_vmax;");
+            command.append("trap 'rc=$?; sh ").append(MOD)
+                    .append("/apply.sh normal || rc=1; exit \"$rc\"' EXIT; ");
+            command.append("echo ").append(callVmax).append(" > /sys/class/qcom-haptics/vmax || exit 1;");
+            command.append("echo ").append(callFifoVmax).append(" > /sys/class/qcom-haptics/fifo_vmax || exit 1;");
+            command.append("echo ").append(callClVmax).append(" > /sys/class/qcom-haptics/cl_vmax || exit 1;");
             for (int i = 0; i < 3; i++) {
-                command.append("cmd vibrator_manager synced oneshot ").append(duration).append(" 255;");
+                command.append("cmd vibrator_manager synced oneshot -a ").append(duration).append(" 255 || exit 1;");
                 command.append("sleep ").append(seconds(gap)).append(";");
             }
-            command.append("sh ").append(MOD).append("/apply.sh normal");
-            sh(command.toString());
+            String result = sh(command.toString());
             runOnUiThread(() -> {
-                previewButton.setEnabled(true);
-                Toast.makeText(this, R.string.preview_complete, Toast.LENGTH_SHORT).show();
+                if (isDestroyed()) return;
+                setBusy(false);
+                Toast.makeText(this, commandFailed(result) ? R.string.preview_failed : R.string.preview_complete,
+                        Toast.LENGTH_SHORT).show();
                 loadConfigurationAndStatus();
             });
         });
@@ -415,34 +569,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setBusy(boolean busy) {
-        applyButton.setEnabled(!busy);
-        restoreButton.setEnabled(!busy);
-        refreshButton.setEnabled(!busy);
-        callBoostSwitch.setEnabled(!busy);
-        previewButton.setEnabled(!busy && callBoost);
-        applyButton.setText(busy ? R.string.saving_settings : R.string.apply_settings);
+        this.busy = busy;
+        boolean available = !busy && !loading && savedConfiguration != null;
+        applyButton.setEnabled(available);
+        restoreButton.setEnabled(available);
+        refreshButton.setEnabled(!busy && !loading);
+        callBoostSwitch.setEnabled(available);
+        normalPreviewButton.setEnabled(available);
+        feedbackPreviewButton.setEnabled(available);
+        normalVmaxSlider.setEnabled(available);
+        normalFifoSlider.setEnabled(available);
+        updateIncomingControls(callBoost);
+        updateDraftStatus();
     }
 
     private String sh(String command) {
-        try {
-            Process process = new ProcessBuilder("su", "-c", command).redirectErrorStream(true).start();
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            try (InputStream input = process.getInputStream()) {
-                byte[] buffer = new byte[4096];
-                int count;
-                while ((count = input.read(buffer)) > 0) {
-                    output.write(buffer, 0, count);
-                }
-            }
-            int exitCode = process.waitFor();
-            String text = output.toString(StandardCharsets.UTF_8.name()).trim();
-            if (exitCode != 0) {
-                return text + " [exit=" + exitCode + "]";
-            }
-            return text;
-        } catch (Throwable throwable) {
-            return "ERR: " + throwable;
-        }
+        return ShellRunner.run(30000, "su", "-c",
+                "[ \"$(id -u)\" = 0 ] || { echo HB_ROOT_DENIED; exit 1; }; " + command);
+    }
+
+    private static boolean commandFailed(String result) {
+        return result.startsWith("ERR:") || result.contains("[exit=");
+    }
+
+    private int errorMessage(String result) {
+        if (result.contains("ERR:TIMEOUT")) return R.string.operation_timeout;
+        if (result.contains("HB_NO_MODULE")) return R.string.module_missing;
+        if (result.contains("HB_NODE_UNAVAILABLE")) return R.string.nodes_unavailable;
+        if (result.contains("HB_CONFIG_SAVED")) return R.string.save_verify_failed;
+        if (result.contains("HB_WRITE_FAILED")) return R.string.config_write_failed;
+        if (commandFailed(result)) return R.string.root_unavailable;
+        return R.string.config_invalid;
     }
 
     private void runEntranceMotion() {

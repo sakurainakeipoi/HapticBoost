@@ -26,6 +26,9 @@
     <string name="normal_vmax_description">通知、App 与短震</string>
     <string name="normal_fifo_label">触感反馈</string>
     <string name="normal_fifo_description">点按、滑动与系统交互</string>
+    <string name="preview_normal">预览普通震动</string>
+    <string name="preview_feedback">预览触感反馈</string>
+    <string name="preview_daily_hint">按当前滑块数值预览 3 次；点击“保存并应用”后长期生效</string>
 
     <string name="enable_call_boost">来电增强</string>
     <string name="enable_call_boost_hint">响铃或振动模式下增强来电；静音、接听或挂断时停止</string>
@@ -34,6 +37,25 @@
     <string name="call_fifo_label">响铃触感</string>
     <string name="call_fifo_description">来电场景下的反馈电压</string>
     <string name="preview_ring">预览来电增强</string>
+    <string name="ring_duration_label">每次震动时长</string>
+    <string name="ring_gap_label">两次震动间隔</string>
+    <string name="ring_rhythm_hint">选择节奏或自行调整，预览确认后保存</string>
+    <string name="rhythm_short">短促</string>
+    <string name="rhythm_even">均匀</string>
+    <string name="rhythm_long">长震</string>
+    <string name="timing_value_format">%1$s · %2$d 毫秒</string>
+    <string name="unsaved_changes">尚未保存 · 当前调整仅用于预览</string>
+    <string name="no_unsaved_changes">没有未保存的调整</string>
+    <string name="undo_changes">撤销修改</string>
+    <string name="apply_unverified">应用结果尚未确认 · 请重新保存并校验</string>
+    <string name="save_failed">保存或应用未完成</string>
+    <string name="save_verify_failed">配置已写入，但实际电压未通过校验。若正在来电，请结束后重新保存。</string>
+    <string name="operation_timeout">操作超时，结果尚未确认。请检查 Root 授权后刷新并重试。</string>
+    <string name="module_missing">未找到模块或配置，请确认模块已安装并启用。</string>
+    <string name="nodes_unavailable">震动节点不可写，请检查 Root 权限和机型兼容性。</string>
+    <string name="config_write_failed">配置写入失败，请检查模块目录权限与可用空间。</string>
+    <string name="root_unavailable">Root 命令执行失败，请检查授权后重试。</string>
+    <string name="config_invalid">配置缺少必要字段或数值无效，暂时无法读取。</string>
 
     <string name="apply_settings">保存并应用</string>
     <string name="saving_settings">正在应用…</string>
@@ -46,9 +68,10 @@
     <string name="cancel">取消</string>
     <string name="load_failed">读取失败</string>
     <string name="load_failed_detail">请确认已安装模块并授予 Root 权限</string>
-    <string name="saved">已保存并应用</string>
+    <string name="saved">已保存，实际电压校验通过</string>
     <string name="preview_started">正在预览震感…</string>
     <string name="preview_complete">预览完成</string>
+    <string name="preview_failed">预览失败，请检查模块和 Root 权限</string>
     <string name="value_mv_format">%1$d mV</string>
     <string name="not_available">—</string>
 
