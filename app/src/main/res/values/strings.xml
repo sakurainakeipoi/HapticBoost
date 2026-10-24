@@ -28,7 +28,7 @@
     <string name="normal_fifo_description">点按、滑动与系统交互</string>
     <string name="preview_normal">预览普通震动</string>
     <string name="preview_feedback">预览触感反馈</string>
-    <string name="preview_daily_hint">按当前滑块数值预览 3 次；点击“保存并应用”后长期生效</string>
+    <string name="preview_daily_hint">普通预览使用系统通知强度与双短震，触感预览点按 3 次。不同通知可有不同节奏；保存后生效。</string>
 
     <string name="enable_call_boost">来电增强</string>
     <string name="enable_call_boost_hint">响铃或振动模式下增强来电；静音、接听或挂断时停止</string>
@@ -72,6 +72,8 @@
     <string name="preview_started">正在预览震感…</string>
     <string name="preview_complete">预览完成</string>
     <string name="preview_failed">预览失败，请检查模块和 Root 权限</string>
+    <string name="preview_call_busy">来电增强正在运行，请结束来电后再保存或预览</string>
+    <string name="preview_restore_failed">预览后的电压恢复未通过校验，请重新保存并应用</string>
     <string name="value_mv_format">%1$d mV</string>
     <string name="not_available">—</string>
 

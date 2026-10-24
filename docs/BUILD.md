@@ -48,7 +48,7 @@ app/build/outputs/apk/debug/app-debug.apk
 用于模块联调时，将它复制为：
 
 ```text
-dist/HapticBoost-1.3.0-release.apk
+dist/HapticBoost-1.3.1-release.apk
 ```
 
 发布版签名见本文 §5；不要发布调试密钥签名的 APK。
@@ -140,13 +140,13 @@ KEY_PASSWORD
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.3.0.zip
+# → dist/haptic-boost-v1.3.1.zip
 ```
 
 结构要求：
 
 ```text
-haptic-boost-v1.3.0.zip
+haptic-boost-v1.3.1.zip
 ├── module.prop
 ├── HapticBoost.apk
 ├── service.sh
@@ -169,9 +169,11 @@ App 配置解析、保存读回及命令超时回归（不连接手机）：
 
 ```powershell
 .\tools\test-app.ps1
+python tools/test-preview.py
 ```
 
 使用 `JAVA_HOME` 指定 JDK；未指定时使用仓库本地的 JDK 17。
+`test-preview.py` 使用临时节点测试真实预览准备/恢复命令以及模块写入失败、来电期间恢复和恢复原厂顺序，不连接手机。
 
 ```powershell
 .\gradlew.bat :app:assembleDebug :app:lintDebug

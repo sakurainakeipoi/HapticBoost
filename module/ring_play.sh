@@ -9,7 +9,9 @@ PIDF=/data/local/tmp/vib_ring_play.pid
 RD=${RING_DUR:-1000}; GM=${RING_GAP:-1000}
 case "$RD" in ''|*[!0-9]*) RD=1000;; esac
 [ "$RD" -lt 100 ] && RD=100
+[ "$RD" -gt 3000 ] && RD=3000
 case "$GM" in ''|*[!0-9]*) GM=1000;; esac
+[ "$GM" -gt 3000 ] && GM=3000
 GS="$((GM/1000)).$(printf '%03d' $((GM%1000)))"
 DA="dumpsys audio"
 if command -v timeout >/dev/null 2>&1; then DA="timeout 5 dumpsys audio"; fi
@@ -27,7 +29,10 @@ while [ $i -lt 900 ]; do
   RING_AUDIO=$($DA 2>/dev/null) || break
   ringer_allows_boost "$RING_AUDIO" || break
   [ -f "$ACT" ] || break
-  cmd vibrator_manager synced oneshot "$RD" 255 >/dev/null 2>&1
+  # Shell oneshot uses COMMUNICATION_REQUEST and is rejected while Telecom's
+  # repeating RINGTONE is active. Use the bounded ringtone player instead.
+  CLASSPATH="$MODDIR/HapticBoost.apk" app_process /system/bin \
+    io.github.sakurainakeipoi.hapticboost.RingtonePulse "$RD" >> "$HB" 2>&1 || break
   sleep "$GS"
   i=$((i+1))
 done

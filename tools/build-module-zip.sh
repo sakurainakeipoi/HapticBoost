@@ -12,11 +12,15 @@ cd "$ROOT"
 VERSION="$(grep '^version=' module/module.prop | cut -d= -f2)"
 OUT="dist/haptic-boost-v${VERSION}.zip"
 
-# 找配套 APK（可选）：发布签名优先，开发阶段才回退到 debug。
+# 来电播放器位于配套 APK 中，模块必须包含 APK。发布签名优先。
 if [ -f "dist/HapticBoost-${VERSION}-release.apk" ]; then
   APK="dist/HapticBoost-${VERSION}-release.apk"
 else
   APK="$(ls "dist/HapticBoost-${VERSION}"-debug.apk 2>/dev/null | head -1 || true)"
+fi
+if [ -z "$APK" ]; then
+  echo "缺少配套 APK：请先构建 App，来电增强需要其中的播放器。" >&2
+  exit 1
 fi
 
 # 1) 准备临时目录

@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Force -Path $classes | Out-Null
 Push-Location $projectRoot
 try {
     $sourceRoot = 'app\src\main\java\io\github\sakurainakeipoi\hapticboost'
-    & (Join-Path $jdkDirectory 'bin\javac.exe') -encoding UTF-8 -d $classes "$sourceRoot\ModuleProtocol.java" "$sourceRoot\ShellRunner.java" 'tools\tests\AppProtocolTest.java'
+    & (Join-Path $jdkDirectory 'bin\javac.exe') -encoding UTF-8 -d $classes "$sourceRoot\ModuleProtocol.java" "$sourceRoot\ShellRunner.java" "$sourceRoot\PreviewPattern.java" 'tools\tests\AppProtocolTest.java'
     if ($LASTEXITCODE -ne 0) { throw 'App protocol test compilation failed' }
     & (Join-Path $jdkDirectory 'bin\java.exe') -cp $classes io.github.sakurainakeipoi.hapticboost.AppProtocolTest
     if ($LASTEXITCODE -ne 0) { throw 'App protocol tests failed' }

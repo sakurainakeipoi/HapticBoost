@@ -1,7 +1,11 @@
 package io.github.sakurainakeipoi.hapticboost;
 
 import android.animation.ValueAnimator;
+import android.media.AudioAttributes;
 import android.os.Build;
+import android.os.VibrationAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
@@ -226,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(Slider touchedSlider) {
-                previewVoltage(node, clampVoltage(Math.round(touchedSlider.getValue())), feedbackPath);
+                runPreview(feedbackPath, touchedSlider == callVmaxSlider || touchedSlider == callFifoSlider, false);
             }
         });
     }
@@ -402,7 +406,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderStatus(boolean configLoaded, LiveStatus status) {
-        boolean liveLoaded = status.vmax >= 0 || status.fifo >= 0 || status.cl >= 0;
+        boolean liveLoaded = status.vmax >= 0 && status.fifo >= 0 && status.cl >= 0;
         if (!configLoaded || !liveLoaded) {
             statusMode.setText(R.string.load_failed);
             statusDetail.setText(R.string.load_failed_detail);
@@ -480,68 +484,86 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void previewVoltage(String node, int value, boolean feedbackPath) {
-        worker.execute(() -> {
-            String trigger = feedbackPath ? "cmd vibrator_manager feedback 6"
-                    : "cmd vibrator_manager synced oneshot -a 70 96";
-            sh("echo " + value + " > /sys/class/qcom-haptics/" + node + "; " + trigger
-                    + "; sleep 0.12; sh " + MOD + "/apply.sh normal");
-        });
-    }
-
     private void previewDailyPattern(boolean feedbackPath) {
-        if (busy) {
-            return;
-        }
-        String node = feedbackPath ? "fifo_vmax" : "vmax";
-        int value = clampVoltage(feedbackPath ? normalFifoVmax : normalVmax);
-        String trigger = feedbackPath ? "cmd vibrator_manager feedback 6"
-                : "cmd vibrator_manager synced oneshot -a 250 96";
-        setBusy(true);
-        Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
-        worker.execute(() -> {
-            // Always restore the saved daily profile, including after a failed trigger.
-            // Do not reload configuration here: keep the user's unsaved slider values.
-            String command = "trap 'rc=$?; sh " + MOD
-                    + "/apply.sh normal || rc=1; exit \"$rc\"' EXIT; "
-                    + "echo " + value + " > /sys/class/qcom-haptics/" + node + " || exit 1; "
-                    + "for i in 1 2 3; do " + trigger + " || exit 1; sleep 0.3; done";
-            String result = sh(command);
-            boolean failed = result.startsWith("ERR:") || result.contains("[exit=");
-            runOnUiThread(() -> {
-                if (isDestroyed()) return;
-                setBusy(false);
-                Toast.makeText(this, failed ? R.string.preview_failed : R.string.preview_complete,
-                        Toast.LENGTH_SHORT).show();
-            });
-        });
+        runPreview(feedbackPath, false, true);
     }
 
     private void previewRingPattern() {
-        int duration = ringDuration;
-        int gap = ringGap;
+        runPreview(false, true, true);
+    }
+
+    private void runPreview(boolean feedbackPath, boolean incoming, boolean full) {
+        if (busy || loading || savedConfiguration == null) return;
+        int vmax = incoming ? callVmax : normalVmax;
+        int fifo = incoming ? callFifoVmax : normalFifoVmax;
+        int cl = incoming ? callClVmax : normalClVmax;
+        long[] timings = incoming ? PreviewPattern.ringtone(full, ringDuration, ringGap)
+                : PreviewPattern.notification(full);
         setBusy(true);
-        Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
+        if (full) Toast.makeText(this, R.string.preview_started, Toast.LENGTH_SHORT).show();
         worker.execute(() -> {
-            StringBuilder command = new StringBuilder();
-            command.append("trap 'rc=$?; sh ").append(MOD)
-                    .append("/apply.sh normal || rc=1; exit \"$rc\"' EXIT; ");
-            command.append("echo ").append(callVmax).append(" > /sys/class/qcom-haptics/vmax || exit 1;");
-            command.append("echo ").append(callFifoVmax).append(" > /sys/class/qcom-haptics/fifo_vmax || exit 1;");
-            command.append("echo ").append(callClVmax).append(" > /sys/class/qcom-haptics/cl_vmax || exit 1;");
-            for (int i = 0; i < 3; i++) {
-                command.append("cmd vibrator_manager synced oneshot -a ").append(duration).append(" 255 || exit 1;");
-                command.append("sleep ").append(seconds(gap)).append(";");
+            String result = sh(ModuleProtocol.preparePreview(vmax, fifo, cl));
+            boolean callBusy = result.contains("HB_CALL_BUSY");
+            boolean failed = commandFailed(result) || !result.contains("HB_PREVIEW_READY");
+            boolean restoreFailed = false;
+            try {
+                if (!failed) {
+                    if (feedbackPath || incoming) {
+                        StringBuilder command = new StringBuilder();
+                        if (feedbackPath) {
+                            for (int i = 0; i < (full ? 3 : 1); i++) {
+                                command.append("[ ! -f /data/local/tmp/vib_ring_active ] || exit 1; ")
+                                        .append("cmd vibrator_manager feedback 6 || exit 1; sleep 0.3; ");
+                            }
+                        } else {
+                            for (int i = 0; i < timings.length; i += 2) {
+                                command.append("sleep ").append(seconds((int) timings[i])).append("; ")
+                                        .append("[ ! -f /data/local/tmp/vib_ring_active ] || exit 1; ")
+                                        .append("cmd vibrator_manager synced oneshot -a ").append(timings[i + 1])
+                                        .append(" 255 || exit 1; ");
+                            }
+                        }
+                        failed = commandFailed(sh(command.toString()));
+                    } else {
+                        playNotificationPreview(timings);
+                        // vibrate() is asynchronous. Keep preview voltages until the waveform ends.
+                        Thread.sleep(PreviewPattern.duration(timings) + 150);
+                    }
+                }
+            } catch (Exception exception) {
+                failed = true;
+                if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            } finally {
+                if (!callBusy) restoreFailed = commandFailed(sh(ModuleProtocol.restoreAfterPreview()));
             }
-            String result = sh(command.toString());
+            final int message = callBusy ? R.string.preview_call_busy
+                    : restoreFailed ? R.string.preview_restore_failed
+                    : failed ? R.string.preview_failed : R.string.preview_complete;
             runOnUiThread(() -> {
                 if (isDestroyed()) return;
                 setBusy(false);
-                Toast.makeText(this, commandFailed(result) ? R.string.preview_failed : R.string.preview_complete,
-                        Toast.LENGTH_SHORT).show();
-                loadConfigurationAndStatus();
+                if (full || message != R.string.preview_complete) {
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                }
             });
         });
+    }
+
+    @SuppressWarnings("deprecation")
+    private void playNotificationPreview(long[] timings) {
+        Vibrator vibrator = (Vibrator) getApplicationContext().getSystemService(VIBRATOR_SERVICE);
+        if (vibrator == null || !vibrator.hasVibrator()) throw new IllegalStateException("No vibrator");
+        AudioAttributes audio = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(VibrationEffect.createWaveform(timings, -1),
+                    new VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_NOTIFICATION).build());
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createWaveform(timings, -1), audio);
+        } else {
+            vibrator.vibrate(timings, -1, audio);
+        }
     }
 
     private void showRestoreConfirmation() {
@@ -593,6 +615,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private int errorMessage(String result) {
+        if (result.contains("HB_CALL_BUSY")) return R.string.preview_call_busy;
         if (result.contains("ERR:TIMEOUT")) return R.string.operation_timeout;
         if (result.contains("HB_NO_MODULE")) return R.string.module_missing;
         if (result.contains("HB_NODE_UNAVAILABLE")) return R.string.nodes_unavailable;

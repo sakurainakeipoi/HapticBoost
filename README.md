@@ -6,8 +6,8 @@
 一个 Root + Magisk 的轻量模块（纯 sysfs 写入，**不修改任何系统文件**），
 配一个原生小 App 用来可视化调参。
 
-当前版本：[**v1.3.0**](https://github.com/sakurainakeipoi/HapticBoost/releases/tag/v1.3.0)。
-新增日常震动预览、未保存调整保留与撤销、来电节奏设置及保存校验。已安装 v1.2.2 模块的用户只需覆盖安装新版 APK；首次安装请使用模块 ZIP。
+当前版本：[**v1.3.1**](https://github.com/sakurainakeipoi/HapticBoost/releases/tag/v1.3.1)。
+修复普通通知预览强度、微信来电模式读取和普通拨号来电增强被系统拒绝的问题。升级必须同时更新模块 ZIP 与配套 App，不能只安装 APK；升级前请记录自定义参数，安装后核对设置。
 
 ---
 
@@ -23,7 +23,7 @@
 - **来电增强**：一个开关同时控制来电电压和补偿震动，绕开系统铃声震感偏弱的问题。
 - **遵循系统铃声模式**：系统电话和微信来电仅在响铃或振动模式下增强；静音模式不启动，来电中切到静音也会取消增强震动。
 - **Material 3 调参 App**：动态取色、深色模式、实时状态卡、滑块松手预览；应用后立即生效并在重启后保留。
-- **纯 sysfs + `cmd`，零系统文件改动**：不影响开机，可安全模式一键回滚。
+- **sysfs + Root 来电播放器，零系统文件改动**：不影响开机，可安全模式一键回滚。
 
 ---
 
@@ -111,15 +111,15 @@ adb push module/* /data/adb/modules/haptic_boost_qcom/
 adb shell su -c 'chmod 0755 /data/adb/modules/haptic_boost_qcom/*.sh'
 
 # 2) 装 App（必须先拷到 /data/local/tmp，system_server 读不了 /sdcard）
-adb push dist/HapticBoost-1.3.0-release.apk /data/local/tmp/
-adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.3.0-release.apk'
+adb push dist/HapticBoost-1.3.1-release.apk /data/local/tmp/
+adb shell su -c 'pm install -r /data/local/tmp/HapticBoost-1.3.1-release.apk'
 ```
 
 ### 自己打包 zip
 
 ```bash
 bash tools/build-module-zip.sh
-# → dist/haptic-boost-v1.3.0.zip
+# → dist/haptic-boost-v1.3.1.zip
 ```
 
 发布包同时包含新式根目录模块结构与 `META-INF` 兼容入口，可由 KernelSU、
@@ -140,7 +140,7 @@ su -c 'tail /data/local/tmp/vibrate_boost_heartbeat'   # 心跳
 ### 方式一：App（推荐）
 打开「震动增强」即可在顶部查看当前档位和三个实时电压节点。
 - **震感设置**：日常触感与来电增强集中在同一张控制卡
-- **日常预览**：普通震动与触感反馈各有独立按钮，按当前滑块数值预览 3 次，结束后恢复已保存的日常档；预览不会保存或重置正在调整的数值
+- **日常预览**：普通震动使用系统通知用途、默认振幅和双短震参考节奏，触感反馈预览 3 次点按；结束后核对电压恢复结果，预览不会保存或重置正在调整的数值。各 App 可自定义通知节奏，参考节奏不代表所有通知
 - **调整保留**：切换应用后保留未保存的调整，显示“尚未保存”，可用“撤销修改”回到模块已保存的数值
 - **来电节奏**：可设置单次时长（100–3000 毫秒）和间隔（0–3000 毫秒），提供短促、均匀、长震三种节奏预设
 - **保存校验**：先完整写入临时文件再替换配置，应用后核对全部配置字段和三个日常电压节点；失败或超时会提示重试，不会显示已生效
@@ -197,8 +197,8 @@ HapticBoost/
 ├── tools/
 │   └── build-module-zip.sh # 一键打包模块 zip
 ├── dist/                   # 预编译产物（已被 .gitignore 忽略）
-│   ├── haptic-boost-v1.3.0.zip       # ← 可直接刷的模块包
-│   └── HapticBoost-1.3.0-release.apk
+│   ├── haptic-boost-v1.3.1.zip       # ← 可直接刷的模块包
+│   └── HapticBoost-1.3.1-release.apk
 ├── HANDOFF.md              # ★ 交接文档（给协作者 / 其他 AI）
 ├── LICENSE                 # MIT
 └── README.md

@@ -20,13 +20,19 @@ if command -v timeout >/dev/null 2>&1; then DT="timeout 5 dumpsys telecom"; fi
 DA="dumpsys audio"
 if command -v timeout >/dev/null 2>&1; then DA="timeout 5 dumpsys audio"; fi
 read_mode() {
-  echo "$1" | sed -n '/CallAudioModeStateMachine/,/Pending Msg/p' | grep -oE 'Mode MODE_[A-Z_]+' | tail -n 1 | sed 's/.*Mode //'
+  sed -n '/CallAudioModeStateMachine/,/Pending Msg/p' <<EOF | grep -oE 'Mode MODE_[A-Z_]+' | tail -n 1 | sed 's/.*Mode //'
+$1
+EOF
 }
 read_audio_mode() {
-  printf '%s\n' "$1" | sed -n 's/^ *- Actual mode = //p' | head -n 1
+  sed -n 's/^ *- Actual mode = //p' <<EOF | head -n 1
+$1
+EOF
 }
 ring_count() {
-  echo "$1" | awk '/^ Ringing calls:/{f=1;next} /^ Holding calls:/{f=0} f&&/[^ \t]/{c++} END{print c+0}'
+  awk '/^[[:space:]]*Ringing calls:/{f=1;next} /^[[:space:]]*Holding calls:/{f=0} f&&/[^ \t]/{c++} END{print c+0}' <<EOF
+$1
+EOF
 }
 
 LAST=""; HB_AT=0; WAS_EXPLICIT_RING=0; WAS_RINGING=0

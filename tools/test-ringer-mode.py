@@ -86,7 +86,7 @@ cat "$FIXTURE/$1"
 [ "$1" != audio ] || exit "$(cat "$FIXTURE/audio_exit")"
 ''')
         self.mock("timeout", '#!/bin/sh\nshift\nexec "$@"\n')
-        for command in ("cmd", "setsid", "pkill"):
+        for command in ("cmd", "setsid", "pkill", "app_process"):
             self.mock(command, common + f'''printf '{command}|%s|%s\\n' "$INDEX" "$*" >> "$HB_TEST_ROOT/events"\n''')
         self.mock("sleep", common + '''
 read_node() { cat "$HB_TEST_ROOT/sysfs/$1" 2>/dev/null; }
@@ -113,8 +113,11 @@ fi
         self.write("bin/" + name, content)
         (self.root / "bin" / name).chmod(0o755)
 
-    def run(self, script):
+    def run(self, script, *, external_printf=False):
         env = dict(os.environ, HB_TEST_ROOT=shell_path(self.root), HB_TEST_TOTAL=str(len(self.stages)))
+        if external_printf:
+            self.write("bash-env", "enable -n printf\n")
+            env["BASH_ENV"] = shell_path(self.root / "bash-env")
         if script == "ring_play.sh":
             self.write("runtime/vib_ring_active", str(int(time.time())))
         result = subprocess.run(
@@ -134,6 +137,31 @@ fi
 
 
 class RingerModeTests(unittest.TestCase):
+    def test_native_telecom_indentation_without_notification_hint(self):
+        states = [stage(), stage(), stage()]
+        # Match the device's four-space headings; ringing list must also work
+        # when the mode history has not caught up with the new call yet.
+        states[0]["telecom"] = "    Ringing calls:\n      Call id=1\n    Holding calls:\n"
+        states[1]["telecom"] = "prefix\\c\n" + telecom("MODE_RINGTONE", True)
+        states[2]["telecom"] = telecom("MODE_IN_CALL")
+        box = self.sandbox(states)
+        box.run("watch.sh")
+        self.assert_profiles(box, [True, True, False])
+
+    def test_large_audio_history_with_android_style_external_printf(self):
+        states = [stage("VIBRATE", source="voip"),
+                  stage("SILENT", source="voip"),
+                  stage("VIBRATE", source="voip", audio_mode="MODE_IN_COMMUNICATION")]
+        for state in states:
+            state["audio"] += "history filler\n" * 20000
+        box = self.sandbox(states, voip=True)
+        box.run("watch.sh", external_printf=True)
+        self.assert_profiles(box, [True, False, False])
+        self.assertEqual(box.snapshots()[2][5:7], ["1", "0"])
+        worker = self.sandbox(states[:2])
+        events = worker.run("ring_play.sh", external_printf=True)
+        self.assertEqual(sum("hapticboost.RingtonePulse" in event for event in events), 1)
+
     def sandbox(self, stages, **kwargs):
         sandbox = Sandbox(stages, **kwargs)
         self.addCleanup(sandbox.close)
@@ -160,7 +188,7 @@ class RingerModeTests(unittest.TestCase):
                 # Worker launch is asynchronous; assert its total and verify
                 # each stage's actual profile/token instead of launch timing.
                 self.assertEqual(sum(event.startswith("setsid|") for event in events), 2)
-                self.assertFalse(any("synced oneshot" in event for event in events))
+                self.assertFalse(any("hapticboost.RingtonePulse" in event for event in events))
                 self.assertTrue(any(event.startswith("cmd|3|vibrator_manager cancel") for event in events))
 
     def test_silent_answer_latches_voip_and_prevents_late_hint(self):
@@ -201,7 +229,7 @@ class RingerModeTests(unittest.TestCase):
             with self.subTest(modes=[state["audio"] for state in states], timeout=states[-1]["audio_exit"]):
                 box = self.sandbox(states)
                 events = box.run("ring_play.sh")
-                pulses = [event for event in events if "vibrator_manager synced oneshot" in event]
+                pulses = [event for event in events if "hapticboost.RingtonePulse" in event]
                 self.assertEqual(len(pulses), count)
                 self.assertEqual([int(event.split("|")[1]) for event in pulses], list(range(count)))
                 for event in pulses:
